@@ -68,26 +68,36 @@ function DispatchDetail({ order, isDispatched, onBack, onToggleDispatch }) {
         )}
       </div>
 
-      {/* WHAT MUST GO — parts, big and clear */}
+      {/* WHAT MUST GO — labeled columns, clear for multiple parts */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-4">
-        <div className="px-5 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
+        <div className="px-5 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <Package size={18} className="text-slate-400" /> What must go
           </h3>
+          <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">
+            {order.items.length} part{order.items.length !== 1 ? 's' : ''}
+          </span>
         </div>
+
+        {/* Column headers */}
+        <div className="grid grid-cols-[1.4fr_1.6fr_auto] gap-3 px-5 sm:px-6 py-2.5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/20">
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Part Number</span>
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Dimensions &amp; Weight</span>
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide text-right">Qty</span>
+        </div>
+
+        {/* Rows */}
         <ul className="divide-y divide-slate-100 dark:divide-slate-700">
           {order.items.map((it, i) => (
-            <li key={i} className="p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{it.sku}</span>
-                <span className="text-lg font-bold text-[#111111] rounded-lg px-3 py-1" style={{ backgroundColor: '#FECD28' }}>
-                  ×{it.qty}
-                </span>
+            <li key={i} className="grid grid-cols-[1.4fr_1.6fr_auto] gap-3 items-center px-5 sm:px-6 py-4">
+              <span className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 break-words">{it.sku}</span>
+              <div className="text-base text-slate-600 dark:text-slate-300 leading-snug">
+                <p className="font-semibold text-slate-800 dark:text-slate-200">{it.h} × {it.w} × {it.l} <span className="font-normal text-slate-400 dark:text-slate-500">cm</span></p>
+                <p>{it.kg} <span className="text-slate-400 dark:text-slate-500">kg each</span></p>
               </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-base text-slate-600 dark:text-slate-300">
-                <span><span className="text-slate-400 dark:text-slate-500">Size:</span> {it.h} × {it.w} × {it.l} cm</span>
-                <span><span className="text-slate-400 dark:text-slate-500">Weight:</span> {it.kg} kg each</span>
-              </div>
+              <span className="justify-self-end text-lg font-bold text-[#111111] rounded-lg px-3 py-1.5 min-w-[3rem] text-center" style={{ backgroundColor: '#FECD28' }}>
+                ×{it.qty}
+              </span>
             </li>
           ))}
         </ul>

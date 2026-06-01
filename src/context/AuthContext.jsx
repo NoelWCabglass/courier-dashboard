@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { LIVE, fetchUsers, saveUsers } from '../api'
 
 const AuthContext = createContext(null)
 
@@ -32,6 +33,18 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [users, setUsers] = useState(INITIAL_USERS)
 
+  // Load the shared user list from the server (so accounts persist & sync)
+  useEffect(() => {
+    if (!LIVE) return
+    fetchUsers().then(list => { if (list.length) setUsers(list) }).catch(err => console.error('Load users failed:', err))
+  }, [])
+
+  // Persist the whole list to the server, keeping local state in sync
+  const persist = (nextUsers) => {
+    setUsers(nextUsers)
+    if (LIVE) saveUsers(nextUsers).catch(err => console.error('Save users failed:', err))
+  }
+
   const login = (username, password) => {
     const found = users.find(
       u => u.username === username.trim().toLowerCase() && u.password === password
@@ -45,18 +58,20 @@ export function AuthProvider({ children }) {
   // User management — admin only
   const addUser = (data) => {
     const newUser = { ...data, id: Date.now(), username: data.username.trim().toLowerCase() }
-    setUsers(prev => [...prev, newUser])
+    persist([...users, newUser])
   }
 
   const updateUser = (id, data) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data, username: data.username?.trim().toLowerCase() ?? u.username } : u))
-    // Update logged-in user if they edited themselves
+    const next = users.map(u => u.id === id
+      ? { ...u, ...data, username: data.username?.trim().toLowerCase() ?? u.username }
+      : u)
+    persist(next)
     if (user?.id === id) setUser(prev => ({ ...prev, ...data }))
   }
 
   const deleteUser = (id) => {
     if (id === user?.id) return // can't delete yourself
-    setUsers(prev => prev.filter(u => u.id !== id))
+    persist(users.filter(u => u.id !== id))
   }
 
   const can = (ability) => ROLES[user?.role]?.[ability] ?? false

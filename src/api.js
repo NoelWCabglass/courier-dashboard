@@ -23,6 +23,15 @@ export async function fetchOrders() {
   return { orders: data.orders || [], history: data.history || [] }
 }
 
+export async function fetchUsers() {
+  const url = `${API_URL}?action=getUsers&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load users')
+  return data.users || []
+}
+
+export const saveUsers        = (users)              => post('saveUsers', { users })
 export const updateOrder      = (psNo, changes)      => post('updateOrder', { psNo, changes })
 export const deleteOrder      = (psNo)               => post('deleteOrder', { psNo })
 export const markDispatched   = (psNo, dispatched)   => post('markDispatched', { psNo, dispatched })

@@ -86,22 +86,34 @@ function Dashboard() {
 
   const source = activeTab === 'history' ? history : orders
 
-  const filtered = useMemo(() => source.filter(o => {
-    if (activeFilter !== 'all' && o.status !== activeFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      if (!o.psNo.toLowerCase().includes(q) &&
-          !o.customer.company.toLowerCase().includes(q) &&
-          !o.address.city.toLowerCase().includes(q) &&
-          !String(o.waybillNo || '').toLowerCase().includes(q)) return false
+  const filtered = useMemo(() => {
+    const rows = source.filter(o => {
+      if (activeFilter !== 'all' && o.status !== activeFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        if (!o.psNo.toLowerCase().includes(q) &&
+            !o.customer.company.toLowerCase().includes(q) &&
+            !o.address.city.toLowerCase().includes(q) &&
+            !String(o.waybillNo || '').toLowerCase().includes(q)) return false
+      }
+      if (dateFrom && new Date(o.dateReceived) < new Date(dateFrom)) return false
+      if (dateTo) {
+        const end = new Date(dateTo); end.setHours(23, 59, 59)
+        if (new Date(o.dateReceived) > end) return false
+      }
+      return true
+    })
+
+    const newestFirst = (a, b) => new Date(b.dateReceived) - new Date(a.dateReceived)
+
+    if (activeTab === 'history') {
+      // History: most recent at the top
+      return rows.sort(newestFirst)
     }
-    if (dateFrom && new Date(o.dateReceived) < new Date(dateFrom)) return false
-    if (dateTo) {
-      const end = new Date(dateTo); end.setHours(23, 59, 59)
-      if (new Date(o.dateReceived) > end) return false
-    }
-    return true
-  }), [source, activeFilter, search, dateFrom, dateTo])
+    // Orders: booked sink to the bottom; within each group, newest first
+    const done = (o) => o.status === STATUS.BOOKED ? 1 : 0
+    return rows.sort((a, b) => done(a) - done(b) || newestFirst(a, b))
+  }, [source, activeFilter, search, dateFrom, dateTo, activeTab])
 
   const selectedOrder = [...orders, ...history].find(o => o.id === selectedId) || null
 

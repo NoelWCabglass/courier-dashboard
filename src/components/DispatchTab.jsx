@@ -264,10 +264,10 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
       {/* Manifest buttons — packed (ready to send) only */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <span className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <Printer size={15} /> Manifest (picked orders):
+          <Printer size={15} /> Manifest (all to dispatch):
         </span>
         {[['TCG', 'TCG'], ['EPX', 'EPX'], ['All couriers', 'ALL']].map(([label, key]) => (
-          <button key={key} onClick={() => openManifest(packedOrders, [], key)}
+          <button key={key} onClick={() => openManifest(booked, [], key)}
             className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand hover:bg-brand/5 transition-colors">
             {label}
           </button>

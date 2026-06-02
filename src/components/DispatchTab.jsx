@@ -242,6 +242,17 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
   // Manifest = packed but not yet dispatched (i.e. packed booked orders still here)
   const packedOrders = booked.filter(o => packedIds.has(o.id))
 
+  // Dispatched today = history orders whose dispatchedAt is today
+  const isToday = (iso) => {
+    if (!iso) return false
+    const d = new Date(iso)
+    const now = new Date()
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  }
+  const dispatchedToday = (history ?? [])
+    .filter(o => isToday(o.dispatchedAt))
+    .sort((a, b) => new Date(b.dispatchedAt) - new Date(a.dispatchedAt))
+
   if (detailOrder) {
     return (
       <DispatchDetail
@@ -312,6 +323,36 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
           ))}
         </div>
       )}
+
+      {/* Dispatched today */}
+      <div className="mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <CheckCircle2 size={18} className="text-green-500" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Dispatched today</h3>
+          <span className="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full px-2 py-0.5 font-semibold">{dispatchedToday.length}</span>
+        </div>
+        {dispatchedToday.length === 0 ? (
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 text-center">
+            <p className="text-sm text-slate-400 dark:text-slate-500">Nothing dispatched yet today.</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm divide-y divide-slate-100 dark:divide-slate-700">
+            {dispatchedToday.map(o => (
+              <div key={o.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{o.psNo}</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 flex-1 truncate">{o.customer.company}</span>
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${COURIER_COLORS[o.selectedCourier] || 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                  {o.selectedCourier || '—'}
+                </span>
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">{o.waybillNo}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 w-16 text-right">
+                  {new Date(o.dispatchedAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

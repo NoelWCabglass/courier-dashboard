@@ -20,7 +20,7 @@ const INITIAL_USERS = [
 export const ROLES = {
   admin:    { label: 'Admin',    canView: true,  canUpload: true,  canEdit: true,  canBook: true,  canDispatch: true,  canAdmin: true  },
   general:  { label: 'General',  canView: true,  canUpload: true,  canEdit: true,  canBook: true,  canDispatch: true,  canAdmin: false },
-  sales:    { label: 'Sales',    canView: true,  canUpload: true,  canEdit: false, canBook: false, canDispatch: false, canAdmin: false },
+  sales:    { label: 'Sales',    canView: true,  canUpload: true,  canEdit: false, canBook: false, canDispatch: true,  canAdmin: false },
   dispatch: { label: 'Dispatch', canView: false, canUpload: false, canEdit: false, canBook: false, canDispatch: true,  canAdmin: false },
 }
 

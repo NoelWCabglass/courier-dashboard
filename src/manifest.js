@@ -68,7 +68,7 @@ export function openManifest(orders, history, courier) {
 
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { font-family: -apple-system, Arial, sans-serif; color: #111; margin: 24px; }
     .head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #FECD28; padding-bottom:12px; margin-bottom:16px; }
     .brand { font-size:22px; font-weight:800; }

@@ -143,8 +143,9 @@ function Dashboard() {
   // Move specific booked orders to History (bulk or single)
   const moveToHistory = async (ids) => {
     if (!LIVE) { notify('Archiving works on the live site only.', 'warning'); return }
-    const targets = [...orders].filter(o => ids.includes(o.id) && o.status === STATUS.BOOKED)
-    if (targets.length === 0) { notify('No booked orders in selection.', 'warning'); return }
+    const archivable = [STATUS.BOOKED, STATUS.TRIANGLE]
+    const targets = [...orders].filter(o => ids.includes(o.id) && archivable.includes(o.status))
+    if (targets.length === 0) { notify('No completed orders in selection.', 'warning'); return }
     // optimistic remove
     const psNos = targets.map(o => o.psNo)
     setOrders(prev => prev.filter(o => !targets.find(t => t.id === o.id)))
@@ -197,9 +198,10 @@ function Dashboard() {
 
   const handleArchive = async () => {
     if (!LIVE) { alert('Archiving works on the live site only.'); return }
-    const bookedCount = orders.filter(o => o.status === STATUS.BOOKED).length
-    if (bookedCount === 0) { alert('No booked orders to move to history.'); return }
-    if (!confirm(`Move ${bookedCount} booked order${bookedCount !== 1 ? 's' : ''} to History?`)) return
+    const archivable = [STATUS.BOOKED, STATUS.TRIANGLE]
+    const bookedCount = orders.filter(o => archivable.includes(o.status)).length
+    if (bookedCount === 0) { alert('No completed orders to move to history.'); return }
+    if (!confirm(`Move ${bookedCount} completed order${bookedCount !== 1 ? 's' : ''} (booked + Triangle) to History?`)) return
     setArchiving(true)
     try {
       const res = await archiveBooked()

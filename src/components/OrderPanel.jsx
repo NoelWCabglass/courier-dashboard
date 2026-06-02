@@ -402,8 +402,8 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                 </section>
               )}
 
-              {/* Move to History — booked orders only */}
-              {canEdit && onMoveToHistory && !editing && order.status === STATUS.BOOKED && (
+              {/* Move to History — completed orders (booked or Triangle) */}
+              {canEdit && onMoveToHistory && !editing && (order.status === STATUS.BOOKED || order.status === STATUS.TRIANGLE) && (
                 <section>
                   <button onClick={onMoveToHistory}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:border-brand hover:bg-brand/5 transition-colors">

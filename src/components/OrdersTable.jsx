@@ -21,7 +21,8 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
   const canEdit = can('canEdit')
   // terminal = can't edit fields (booked / mid-booking / failed)
   const isTerminal = (o) => [STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED].includes(o.status)
-  const isBooked = (o) => o.status === STATUS.BOOKED
+  // Archivable = completed orders that can go to History (booked or Triangle)
+  const isBooked = (o) => o.status === STATUS.BOOKED || o.status === STATUS.TRIANGLE
   // selectable = anything except mid-booking / failed (so booked CAN be picked for History)
   const canSelect = (o) => o.status !== STATUS.BOOKING && o.status !== STATUS.BOOKING_FAILED
 
@@ -95,7 +96,7 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
               <div className="h-4 w-px bg-white/20" />
               <button onClick={moveSelected}
                 className="flex items-center gap-1.5 text-sm font-semibold text-brand hover:brightness-110 transition-colors">
-                <Archive size={14} /> Move {pickedBookedCount} booked to History
+                <Archive size={14} /> Move {pickedBookedCount} to History
               </button>
             </>
           )}

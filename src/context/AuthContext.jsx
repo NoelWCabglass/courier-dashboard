@@ -57,10 +57,14 @@ export function AuthProvider({ children }) {
   }, [])
 
   // Save a session (without the password) and slide the 12h idle expiry forward.
+  // Dispatch stays logged in indefinitely (warehouse tablet) — far-future expiry.
   const writeSession = (u) => {
     if (!u) { localStorage.removeItem(SESSION_KEY); return }
     const safe = { id: u.id, name: u.name, username: u.username, role: u.role }
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ user: safe, expiresAt: Date.now() + IDLE_MS }))
+    const expiresAt = u.role === 'dispatch'
+      ? Date.now() + 100 * 365 * 24 * 60 * 60 * 1000 // ~never
+      : Date.now() + IDLE_MS
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ user: safe, expiresAt }))
   }
 
   // Keep the session alive while the user is active; auto-logout after 12h idle.

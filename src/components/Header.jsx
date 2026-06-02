@@ -1,8 +1,24 @@
-import { RefreshCw, LogOut, Moon, Sun } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark }) {
   const { user, logout, can } = useAuth()
+  const [isFs, setIsFs] = useState(false)
+
+  useEffect(() => {
+    const onFs = () => setIsFs(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFs)
+    return () => document.removeEventListener('fullscreenchange', onFs)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.()
+    } else {
+      document.documentElement.requestFullscreen?.()
+    }
+  }
 
   const tabs = [
     { key: 'orders',    label: 'Orders',    show: can('canView') },
@@ -53,6 +69,11 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
             <button onClick={toggleDark} title={dark ? 'Light mode' : 'Dark mode'}
               className="p-2 rounded-md text-black/50 hover:text-black hover:bg-black/10 transition-colors">
               {dark ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
+            <button onClick={toggleFullscreen} title={isFs ? 'Exit fullscreen' : 'Fullscreen'}
+              className="p-2 rounded-md text-black/50 hover:text-black hover:bg-black/10 transition-colors">
+              {isFs ? <Minimize size={15} /> : <Maximize size={15} />}
             </button>
 
             <button onClick={onRefresh} disabled={refreshing}

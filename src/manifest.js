@@ -26,7 +26,10 @@ export function openManifest(orders, history, courier) {
     ? ['TCG', 'EPX', 'Triangle'].map(c => ({ name: c, items: rows.filter(o => o.selectedCourier === c) })).filter(g => g.items.length)
     : [{ name: courier, items: rows }]
 
-  const sectionHtml = (g) => `
+  const sectionHtml = (g) => {
+    const secParcels = g.items.reduce((s, o) => s + parcels(o), 0)
+    const secWeight = g.items.reduce((s, o) => s + weight(o), 0)
+    return `
     <h2>${esc(g.name)} — ${g.items.length} shipment${g.items.length !== 1 ? 's' : ''}</h2>
     <table>
       <thead>
@@ -50,9 +53,16 @@ export function openManifest(orders, history, courier) {
             <td class="center">☐</td>
           </tr>
         `).join('')}
+        <tr class="subtotal">
+          <td colspan="5" style="text-align:right">${esc(g.name)} total:</td>
+          <td class="center">${secParcels}</td>
+          <td class="center">${secWeight.toFixed(1)}</td>
+          <td colspan="2"></td>
+        </tr>
       </tbody>
     </table>
   `
+  }
 
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
   <style>
@@ -70,6 +80,7 @@ export function openManifest(orders, history, courier) {
     .sub { color:#666; font-size:10px; }
     .center { text-align:center; }
     .note { background:#fff8e1; font-style:italic; color:#8a6d00; }
+    .subtotal td { background:#f9f9f9; font-weight:700; }
     .total { margin-top:10px; font-size:12px; font-weight:600; }
     .empty { color:#999; padding:20px; text-align:center; }
     @media print { body { margin:10px; } .noprint { display:none; } }
@@ -81,7 +92,9 @@ export function openManifest(orders, history, courier) {
     </div>
     <div class="noprint" style="margin-bottom:16px"><button class="btn" onclick="window.print()">Print this manifest</button></div>
     ${rows.length === 0 ? '<p class="empty">No booked shipments to manifest.</p>' : groups.map(sectionHtml).join('')}
-    <p class="total">Total parcels: ${rows.reduce((s, o) => s + parcels(o), 0)} &nbsp;|&nbsp; Total weight: ${rows.reduce((s, o) => s + weight(o), 0).toFixed(1)} kg</p>
+    <p class="total" style="font-size:14px;border-top:2px solid #FECD28;padding-top:8px">
+      Grand total — ${rows.length} shipment${rows.length !== 1 ? 's' : ''}, ${rows.reduce((s, o) => s + parcels(o), 0)} parcels, ${rows.reduce((s, o) => s + weight(o), 0).toFixed(1)} kg
+    </p>
   </body></html>`
 
   const w = window.open('', '_blank')

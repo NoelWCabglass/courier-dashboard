@@ -16,7 +16,7 @@ const COURIER_COLORS = {
 // ============================================================
 // FULL-PAGE DETAIL
 // ============================================================
-function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch }) {
+function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, dispatchedMode, onUndoDispatch }) {
   const totalParcels = order.items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0)
   const totalWeight = order.items.reduce((sum, it) => sum + (Number(it.kg) || 0) * (Number(it.qty) || 0), 0)
 
@@ -113,24 +113,42 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch })
         )}
       </div>
 
-      {/* Two-stage action buttons */}
-      <div className="sticky bottom-0 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur sm:bg-transparent sm:py-0 flex flex-col sm:flex-row gap-3">
-        <button onClick={() => onTogglePacked(order.id)}
-          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-lg font-bold transition-all
-            ${isPacked
-              ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-2 border-green-400 dark:border-green-700'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-600 hover:border-brand'}`}>
-          <Box size={20} /> {isPacked ? 'Picked ✓ (tap to undo)' : 'Mark Picked'}
-        </button>
-        <button onClick={() => { if (confirm(`Dispatch ${order.psNo}? It will move to History.`)) onDispatch(order.id) }}
-          disabled={!isPacked}
-          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-lg font-bold transition-all
-            ${isPacked ? 'text-[#111111] hover:brightness-95 shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}
-          style={isPacked ? { backgroundColor: '#FECD28' } : {}}>
-          <Truck size={20} /> Dispatch
-        </button>
-      </div>
-      {!isPacked && <p className="text-center text-sm text-slate-400 mt-2">Mark as picked before dispatching</p>}
+      {/* Action buttons */}
+      {dispatchedMode ? (
+        <div className="space-y-3">
+          {order.dispatchedAt && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3.5 text-center">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                Dispatched {new Date(order.dispatchedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+              </p>
+            </div>
+          )}
+          <button onClick={() => { if (confirm(`Undo dispatch for ${order.psNo}? It will return to Orders.`)) onUndoDispatch(order.psNo) }}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-base font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 hover:border-brand transition-all">
+            <ArrowLeft size={18} /> Undo dispatch (return to Orders)
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="sticky bottom-0 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur sm:bg-transparent sm:py-0 flex flex-col sm:flex-row gap-3">
+            <button onClick={() => onTogglePacked(order.id)}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-lg font-bold transition-all
+                ${isPacked
+                  ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-2 border-green-400 dark:border-green-700'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-600 hover:border-brand'}`}>
+              <Box size={20} /> {isPacked ? 'Picked ✓ (tap to undo)' : 'Mark Picked'}
+            </button>
+            <button onClick={() => { if (confirm(`Dispatch ${order.psNo}? It will move to History.`)) onDispatch(order.id) }}
+              disabled={!isPacked}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-lg font-bold transition-all
+                ${isPacked ? 'text-[#111111] hover:brightness-95 shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}
+              style={isPacked ? { backgroundColor: '#FECD28' } : {}}>
+              <Truck size={20} /> Dispatch
+            </button>
+          </div>
+          {!isPacked && <p className="text-center text-sm text-slate-400 mt-2">Mark as picked before dispatching</p>}
+        </>
+      )}
     </div>
   )
 }
@@ -187,7 +205,7 @@ function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
 // ============================================================
 // MAIN
 // ============================================================
-export default function DispatchTab({ orders, history, packedIds, onTogglePacked, onDispatch }) {
+export default function DispatchTab({ orders, history, packedIds, onTogglePacked, onDispatch, onUndoDispatch }) {
   const [search, setSearch] = useState('')
   const [detailId, setDetailId] = useState(null)
 
@@ -196,8 +214,6 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
     () => (orders ?? []).filter(o => o.status === STATUS.BOOKED),
     [orders]
   )
-
-  const detailOrder = booked.find(o => o.id === detailId) || null
 
   const filtered = useMemo(() => booked.filter(o => {
     if (search) {
@@ -230,11 +246,18 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
     .filter(o => isToday(o.dispatchedAt))
     .sort((a, b) => new Date(b.dispatchedAt) - new Date(a.dispatchedAt))
 
+  // Detail can be an awaiting-dispatch order OR a dispatched-today one
+  const bookedDetail = booked.find(o => o.id === detailId)
+  const dispatchedDetail = dispatchedToday.find(o => o.id === detailId)
+  const detailOrder = bookedDetail || dispatchedDetail || null
+
   if (detailOrder) {
     return (
       <DispatchDetail
         order={detailOrder}
         isPacked={packedIds.has(detailOrder.id)}
+        dispatchedMode={!!dispatchedDetail}
+        onUndoDispatch={(ps) => { onUndoDispatch(ps); setDetailId(null) }}
         onBack={() => setDetailId(null)}
         onTogglePacked={onTogglePacked}
         onDispatch={(id) => { onDispatch(id); setDetailId(null) }}
@@ -315,7 +338,8 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
         ) : (
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm divide-y divide-slate-100 dark:divide-slate-700">
             {dispatchedToday.map(o => (
-              <div key={o.id} className="flex items-center gap-3 px-4 py-3">
+              <button key={o.id} onClick={() => setDetailId(o.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{o.psNo}</span>
                 <span className="text-sm text-slate-500 dark:text-slate-400 flex-1 truncate">{o.customer.company}</span>
                 <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${COURIER_COLORS[o.selectedCourier] || 'bg-slate-50 border-slate-200 text-slate-500'}`}>
@@ -325,7 +349,8 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
                 <span className="text-xs text-slate-400 dark:text-slate-500 w-16 text-right">
                   {new Date(o.dispatchedAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
                 </span>
-              </div>
+                <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 shrink-0" />
+              </button>
             ))}
           </div>
         )}

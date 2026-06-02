@@ -3,7 +3,7 @@ import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, saveNote as apiSaveNote, setPacked as apiSetPacked } from './api'
+import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
 import Toasts from './components/Toasts'
@@ -36,10 +36,10 @@ function Dashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [toasts, setToasts] = useState([])
 
-  // Toast helper
-  const notify = (message, type = 'success') => {
+  // Toast helper — optional action = { label, onClick }, optional duration
+  const notify = (message, type = 'success', action = null, duration = 4000) => {
     const id = Date.now() + Math.random()
-    setToasts(t => [...t, { id, message, type }])
+    setToasts(t => [...t, { id, message, type, action, duration }])
   }
   const removeToast = (id) => setToasts(t => t.filter(x => x.id !== id))
 
@@ -210,8 +210,26 @@ function Dashboard() {
   // Stage 2: dispatched → archive to History
   const dispatchOrder = (id) => {
     const order = [...orders, ...history].find(o => o.id === id)
-    if (order) notify(`PS ${order.psNo} dispatched → moved to History`)
+    const psNo = order ? order.psNo : null
     moveToHistory([id])
+    if (psNo) {
+      notify(`PS ${psNo} dispatched → moved to History`, 'success',
+        { label: 'Undo', onClick: () => undoDispatch(psNo) }, 8000)
+    }
+  }
+
+  // Undo a dispatch: bring the order back from History to Pending
+  const undoDispatch = async (psNo) => {
+    if (!LIVE) { notify('Undo works on the live site only.', 'warning'); return }
+    try {
+      await restoreOrders([psNo])
+      addLog(user, 'Undid dispatch (restored to orders)', `PS ${psNo}`)
+      notify(`PS ${psNo} restored to Orders`)
+      await loadOrders()
+    } catch (err) {
+      console.error('Undo dispatch failed:', err)
+      notify('Undo failed', 'warning')
+    }
   }
 
   const handleArchive = async () => {
@@ -263,7 +281,8 @@ function Dashboard() {
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'dispatch' && (
               <DispatchTab orders={orders} history={history}
-                packedIds={packedIds} onTogglePacked={togglePacked} onDispatch={dispatchOrder} />
+                packedIds={packedIds} onTogglePacked={togglePacked} onDispatch={dispatchOrder}
+                onUndoDispatch={undoDispatch} />
             )}
             {activeTab === 'admin'    && <AdminPage orders={orders} history={history} />}
 

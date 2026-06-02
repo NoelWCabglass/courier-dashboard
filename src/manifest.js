@@ -49,7 +49,6 @@ export function openManifest(orders, history, courier) {
             <td>${esc(o.waybillNo) || '—'}</td>
             <td class="center">☐</td>
           </tr>
-          ${o.note ? `<tr><td></td><td colspan="8" class="note">📝 ${esc(o.note)}</td></tr>` : ''}
         `).join('')}
       </tbody>
     </table>

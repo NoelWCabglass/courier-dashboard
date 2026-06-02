@@ -16,7 +16,17 @@ function Toast({ toast, onClose }) {
   return (
     <div className="flex items-start gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg px-4 py-3 w-80 animate-[slideIn_0.2s_ease-out]">
       <Icon size={18} className={`${cls} shrink-0 mt-0.5`} />
-      <p className="flex-1 text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
+      <div className="flex-1">
+        <p className="text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
+        {toast.action && (
+          <button
+            onClick={() => { toast.action.onClick(); onClose() }}
+            className="mt-1.5 text-sm font-bold text-[#111111] rounded-lg px-3 py-1"
+            style={{ backgroundColor: '#FECD28' }}>
+            {toast.action.label}
+          </button>
+        )}
+      </div>
       <button onClick={onClose} className="text-slate-300 hover:text-slate-500 shrink-0"><X size={14} /></button>
     </div>
   )

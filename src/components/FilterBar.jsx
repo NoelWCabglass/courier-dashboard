@@ -69,6 +69,13 @@ function StatusDropdown({ value, onChange, orders }) {
 export default function FilterBar({ orders, activeFilter, setActiveFilter, courierFilter, setCourierFilter, search, setSearch, dateFrom, setDateFrom, dateTo, setDateTo }) {
   const hasFilters = activeFilter !== 'all' || courierFilter !== 'all' || search || dateFrom || dateTo
 
+  const todayStr = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time
+  const isToday = dateFrom === todayStr && dateTo === todayStr
+  const toggleToday = () => {
+    if (isToday) { setDateFrom(''); setDateTo('') }
+    else { setDateFrom(todayStr); setDateTo(todayStr) }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2.5 mb-4">
       <div className="relative flex-1 min-w-[200px] max-w-xs">
@@ -79,6 +86,15 @@ export default function FilterBar({ orders, activeFilter, setActiveFilter, couri
       </div>
 
       <StatusDropdown value={activeFilter} onChange={setActiveFilter} orders={orders} />
+
+      <button onClick={toggleToday}
+        className={`text-sm font-semibold rounded-xl px-3 py-2 shadow-sm border transition-colors
+          ${isToday
+            ? 'bg-brand border-brand-dark text-[#111111]'
+            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand'}`}
+        style={isToday ? { backgroundColor: '#FECD28' } : {}}>
+        Today
+      </button>
 
       <select value={courierFilter} onChange={e => setCourierFilter(e.target.value)}
         className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand cursor-pointer">

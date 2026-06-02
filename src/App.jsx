@@ -87,10 +87,13 @@ function Dashboard() {
     // Optimistic local update
     setOrders(prevList => prevList.map(o => o.id === id ? { ...o, ...changes } : o))
     // Persist to sheet
-    if (LIVE && prev) apiUpdate(prev.psNo, changes).catch(err => {
-      console.error('Update failed:', err)
-      loadOrders() // re-sync on failure
-    })
+    if (LIVE && prev) {
+      // Changes that trigger a server-side re-quote → reload to show new prices
+      const triggersRequote = changes.address || changes.items || changes.tcgRefresh || changes.epxRefresh
+      apiUpdate(prev.psNo, changes)
+        .then(() => { if (triggersRequote) loadOrders() })
+        .catch(err => { console.error('Update failed:', err); loadOrders() })
+    }
   }
 
   const deleteOrder = (id) => {

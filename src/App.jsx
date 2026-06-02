@@ -118,6 +118,7 @@ function Dashboard() {
   }, [source, activeFilter, courierFilter, search, dateFrom, dateTo, activeTab])
 
   const selectedOrder = [...orders, ...history].find(o => o.id === selectedId) || null
+  const selectedInHistory = !!history.find(o => o.id === selectedId)
 
   const updateOrder = (id, changes) => {
     const prev = [...orders, ...history].find(o => o.id === id)
@@ -153,9 +154,9 @@ function Dashboard() {
   // Move specific booked orders to History (bulk or single)
   const moveToHistory = async (ids) => {
     if (!LIVE) { notify('Archiving works on the live site only.', 'warning'); return }
-    const archivable = [STATUS.BOOKED, STATUS.TRIANGLE]
-    const targets = [...orders].filter(o => ids.includes(o.id) && archivable.includes(o.status))
-    if (targets.length === 0) { notify('No completed orders in selection.', 'warning'); return }
+    // Manual move allows any status except mid-booking
+    const targets = [...orders].filter(o => ids.includes(o.id) && o.status !== STATUS.BOOKING)
+    if (targets.length === 0) { notify('No movable orders in selection.', 'warning'); return }
     // optimistic remove
     const psNos = targets.map(o => o.psNo)
     setOrders(prev => prev.filter(o => !targets.find(t => t.id === o.id)))
@@ -317,7 +318,8 @@ function Dashboard() {
         onUpdate={(changes) => selectedOrder && updateOrder(selectedOrder.id, changes)}
         onDelete={() => selectedOrder && deleteOrder(selectedOrder.id)}
         onSaveNote={(note) => selectedOrder && saveOrderNote(selectedOrder.id, note)}
-        onMoveToHistory={() => selectedOrder && moveToHistory([selectedOrder.id])} />
+        onMoveToHistory={() => selectedOrder && moveToHistory([selectedOrder.id])}
+        inHistory={selectedInHistory} />
 
       <Toasts toasts={toasts} remove={removeToast} />
     </div>

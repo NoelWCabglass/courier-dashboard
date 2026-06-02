@@ -74,15 +74,11 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
         <div className="hidden lg:flex items-center gap-3 mb-3 bg-[#111111] text-white rounded-xl px-4 py-2.5 shadow-lg flex-wrap">
           <span className="text-sm font-semibold">{pickedCount} selected</span>
 
-          {pickedBookedCount > 0 && (
-            <>
-              <div className="h-4 w-px bg-white/20" />
-              <button onClick={moveSelected}
-                className="flex items-center gap-1.5 text-sm font-semibold text-brand hover:brightness-110 transition-colors">
-                <Archive size={14} /> Move {pickedBookedCount} to History
-              </button>
-            </>
-          )}
+          <div className="h-4 w-px bg-white/20" />
+          <button onClick={moveSelected}
+            className="flex items-center gap-1.5 text-sm font-semibold text-brand hover:brightness-110 transition-colors">
+            <Archive size={14} /> Move {pickedCount} to History
+          </button>
 
           <div className="h-4 w-px bg-white/20" />
           <button onClick={() => { if (confirm(`Delete ${pickedCount} order${pickedCount !== 1 ? 's' : ''}? This can't be undone.`)) deleteSelected() }}

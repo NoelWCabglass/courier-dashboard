@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, AlertTriangle, ChevronRight, CheckCircle2, StickyNote, X, Archive } from 'lucide-react'
+import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2 } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import OrderCard from './OrderCard'
@@ -16,7 +16,7 @@ const COURIER_COLORS = {
   Triangle: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
 }
 
-export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onBulkUpdate, onMoveToHistory }) {
+export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onMoveToHistory, onBulkDelete }) {
   const { can } = useAuth()
   const canEdit = can('canEdit')
   // terminal = can't edit fields (booked / mid-booking / failed)
@@ -34,12 +34,12 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
   const allPicked = selectable.length > 0 && selectable.every(o => picked.has(o.id))
   const toggleAll = () => setPicked(allPicked ? new Set() : new Set(selectable.map(o => o.id)))
   const clearPicked = () => setPicked(new Set())
-  const applyBulk = (changes) => {
-    onBulkUpdate(Array.from(picked), changes)
-    clearPicked()
-  }
   const moveSelected = () => {
     onMoveToHistory(Array.from(picked))
+    clearPicked()
+  }
+  const deleteSelected = () => {
+    onBulkDelete(Array.from(picked))
     clearPicked()
   }
   const pickedCount = picked.size
@@ -74,23 +74,6 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
         <div className="hidden lg:flex items-center gap-3 mb-3 bg-[#111111] text-white rounded-xl px-4 py-2.5 shadow-lg flex-wrap">
           <span className="text-sm font-semibold">{pickedCount} selected</span>
 
-          {pickedActiveCount > 0 && (
-            <>
-              <div className="h-4 w-px bg-white/20" />
-              <button onClick={() => applyBulk({ approved: true })}
-                className="flex items-center gap-1.5 text-sm font-medium hover:text-brand transition-colors">
-                <CheckCircle2 size={14} /> Approve
-              </button>
-              <button onClick={() => applyBulk({ approved: true, buyLabel: true })}
-                className="text-sm font-medium hover:text-brand transition-colors">Approve + Buy Label</button>
-              <span className="text-sm text-white/60 ml-1">Courier:</span>
-              {['TCG', 'EPX', 'Triangle'].map(c => (
-                <button key={c} onClick={() => applyBulk({ selectedCourier: c })}
-                  className="text-sm font-semibold hover:text-brand transition-colors">{c}</button>
-              ))}
-            </>
-          )}
-
           {pickedBookedCount > 0 && (
             <>
               <div className="h-4 w-px bg-white/20" />
@@ -100,6 +83,12 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
               </button>
             </>
           )}
+
+          <div className="h-4 w-px bg-white/20" />
+          <button onClick={() => { if (confirm(`Delete ${pickedCount} order${pickedCount !== 1 ? 's' : ''}? This can't be undone.`)) deleteSelected() }}
+            className="flex items-center gap-1.5 text-sm font-semibold text-red-400 hover:text-red-300 transition-colors">
+            <Trash2 size={14} /> Delete {pickedCount}
+          </button>
 
           <button onClick={clearPicked} className="ml-auto text-white/60 hover:text-white"><X size={16} /></button>
         </div>

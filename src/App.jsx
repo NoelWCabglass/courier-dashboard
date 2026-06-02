@@ -29,6 +29,7 @@ function Dashboard() {
   const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB[user?.role] ?? 'orders')
   const [activeFilter, setActiveFilter] = useState('all')
+  const [courierFilter, setCourierFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -89,6 +90,7 @@ function Dashboard() {
   const filtered = useMemo(() => {
     const rows = source.filter(o => {
       if (activeFilter !== 'all' && o.status !== activeFilter) return false
+      if (courierFilter !== 'all' && o.selectedCourier !== courierFilter) return false
       if (search) {
         const q = search.toLowerCase()
         if (!o.psNo.toLowerCase().includes(q) &&
@@ -113,7 +115,7 @@ function Dashboard() {
     // Orders: booked sink to the bottom; within each group, newest first
     const done = (o) => o.status === STATUS.BOOKED ? 1 : 0
     return rows.sort((a, b) => done(a) - done(b) || newestFirst(a, b))
-  }, [source, activeFilter, search, dateFrom, dateTo, activeTab])
+  }, [source, activeFilter, courierFilter, search, dateFrom, dateTo, activeTab])
 
   const selectedOrder = [...orders, ...history].find(o => o.id === selectedId) || null
 
@@ -142,14 +144,10 @@ function Dashboard() {
     }
   }
 
-  // Bulk apply the same change to many orders
-  const bulkUpdate = (ids, changes) => {
-    ids.forEach(id => updateOrder(id, changes))
-    const what = changes.buyLabel ? 'approved + buy label'
-      : changes.approved ? 'approved'
-      : changes.selectedCourier ? `courier set to ${changes.selectedCourier}`
-      : 'updated'
-    notify(`${ids.length} order${ids.length !== 1 ? 's' : ''} ${what}`)
+  // Bulk delete many orders
+  const bulkDelete = (ids) => {
+    ids.forEach(id => deleteOrder(id))
+    notify(`${ids.length} order${ids.length !== 1 ? 's' : ''} deleted`)
   }
 
   // Move specific booked orders to History (bulk or single)
@@ -244,7 +242,7 @@ function Dashboard() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab); setSelectedId(null)
-    setActiveFilter('all'); setSearch('')
+    setActiveFilter('all'); setCourierFilter('all'); setSearch('')
     setDateFrom(''); setDateTo('')
   }
 
@@ -282,13 +280,14 @@ function Dashboard() {
                   </div>
                 )}
                 <FilterBar orders={source} activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+                  courierFilter={courierFilter} setCourierFilter={setCourierFilter}
                   search={search} setSearch={setSearch}
                   dateFrom={dateFrom} setDateFrom={setDateFrom}
                   dateTo={dateTo} setDateTo={setDateTo} />
                 <OrdersTable orders={filtered} selectedId={selectedId}
                   onSelect={(id) => setSelectedId(prev => prev === id ? null : id)}
-                  onUpdate={updateOrder} onBulkUpdate={bulkUpdate}
-                  onMoveToHistory={moveToHistory} />
+                  onUpdate={updateOrder}
+                  onMoveToHistory={moveToHistory} onBulkDelete={bulkDelete} />
               </>
             )}
           </>

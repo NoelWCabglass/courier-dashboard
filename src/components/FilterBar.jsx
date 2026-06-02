@@ -66,8 +66,8 @@ function StatusDropdown({ value, onChange, orders }) {
   )
 }
 
-export default function FilterBar({ orders, activeFilter, setActiveFilter, search, setSearch, dateFrom, setDateFrom, dateTo, setDateTo }) {
-  const hasFilters = activeFilter !== 'all' || search || dateFrom || dateTo
+export default function FilterBar({ orders, activeFilter, setActiveFilter, courierFilter, setCourierFilter, search, setSearch, dateFrom, setDateFrom, dateTo, setDateTo }) {
+  const hasFilters = activeFilter !== 'all' || courierFilter !== 'all' || search || dateFrom || dateTo
 
   return (
     <div className="flex flex-wrap items-center gap-2.5 mb-4">
@@ -79,6 +79,14 @@ export default function FilterBar({ orders, activeFilter, setActiveFilter, searc
       </div>
 
       <StatusDropdown value={activeFilter} onChange={setActiveFilter} orders={orders} />
+
+      <select value={courierFilter} onChange={e => setCourierFilter(e.target.value)}
+        className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand cursor-pointer">
+        <option value="all">All couriers</option>
+        <option value="TCG">TCG</option>
+        <option value="EPX">EPX</option>
+        <option value="Triangle">Triangle</option>
+      </select>
 
       <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm px-3 py-1.5">
         <Calendar size={14} className="text-slate-400 shrink-0" />
@@ -93,7 +101,7 @@ export default function FilterBar({ orders, activeFilter, setActiveFilter, searc
       </div>
 
       {hasFilters && (
-        <button onClick={() => { setActiveFilter('all'); setSearch(''); setDateFrom(''); setDateTo('') }}
+        <button onClick={() => { setActiveFilter('all'); setCourierFilter('all'); setSearch(''); setDateFrom(''); setDateTo('') }}
           className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 shadow-sm transition-colors">
           <X size={13} /> Clear
         </button>

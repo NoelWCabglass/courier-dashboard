@@ -32,6 +32,7 @@ export async function fetchUsers() {
 }
 
 export const saveUsers        = (users)              => post('saveUsers', { users })
+export const archiveBooked    = ()                   => post('archiveBooked')
 export const updateOrder      = (psNo, changes)      => post('updateOrder', { psNo, changes })
 export const deleteOrder      = (psNo)               => post('deleteOrder', { psNo })
 export const markDispatched   = (psNo, dispatched)   => post('markDispatched', { psNo, dispatched })

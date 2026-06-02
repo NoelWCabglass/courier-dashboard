@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { mockOrders, mockHistory } from './mockData'
+import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched } from './api'
+import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched, archiveBooked } from './api'
+import { Archive } from 'lucide-react'
 import Header from './components/Header'
 import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
@@ -15,9 +16,10 @@ import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
 
 function Dashboard() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const { addLog } = useActivity()
   const [dark, toggleDark] = useDarkMode()
+  const [archiving, setArchiving] = useState(false)
   const [orders, setOrders] = useState(LIVE ? [] : mockOrders)
   const [history, setHistory] = useState(LIVE ? [] : mockHistory)
   const [dispatchedIds, setDispatchedIds] = useState(() => new Set())
@@ -114,6 +116,25 @@ function Dashboard() {
     if (LIVE && order) apiMarkDispatched(order.psNo, willDispatch).catch(err => console.error('Dispatch update failed:', err))
   }
 
+  const handleArchive = async () => {
+    if (!LIVE) { alert('Archiving works on the live site only.'); return }
+    const bookedCount = orders.filter(o => o.status === STATUS.BOOKED).length
+    if (bookedCount === 0) { alert('No booked orders to move to history.'); return }
+    if (!confirm(`Move ${bookedCount} booked order${bookedCount !== 1 ? 's' : ''} to History?`)) return
+    setArchiving(true)
+    try {
+      const res = await archiveBooked()
+      addLog(user, 'Archived booked orders to history', `${res.moved} moved`)
+      await loadOrders()
+      alert(`Moved ${res.moved} order${res.moved !== 1 ? 's' : ''} to History.`)
+    } catch (err) {
+      console.error('Archive failed:', err)
+      alert('Archive failed — please try again.')
+    } finally {
+      setArchiving(false)
+    }
+  }
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await loadOrders()
@@ -150,6 +171,15 @@ function Dashboard() {
             {(activeTab === 'orders' || activeTab === 'history') && (
               <>
                 {activeTab === 'orders' && <StatsBar orders={orders} />}
+                {activeTab === 'orders' && can('canEdit') && (
+                  <div className="flex justify-end mb-3">
+                    <button onClick={handleArchive} disabled={archiving}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors disabled:opacity-50">
+                      <Archive size={14} className={archiving ? 'animate-pulse' : ''} />
+                      {archiving ? 'Moving…' : 'Move booked to History'}
+                    </button>
+                  </div>
+                )}
                 <FilterBar orders={source} activeFilter={activeFilter} setActiveFilter={setActiveFilter}
                   search={search} setSearch={setSearch}
                   dateFrom={dateFrom} setDateFrom={setDateFrom}

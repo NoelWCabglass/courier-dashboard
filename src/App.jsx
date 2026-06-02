@@ -1,10 +1,12 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched, archiveBooked } from './api'
+import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched, archiveBooked, saveNote as apiSaveNote } from './api'
 import { Archive } from 'lucide-react'
+import { playPing } from './ping'
+import Toasts from './components/Toasts'
 import Header from './components/Header'
 import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
@@ -31,17 +33,41 @@ function Dashboard() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [toasts, setToasts] = useState([])
+
+  // Toast helper
+  const notify = (message, type = 'success') => {
+    const id = Date.now() + Math.random()
+    setToasts(t => [...t, { id, message, type }])
+  }
+  const removeToast = (id) => setToasts(t => t.filter(x => x.id !== id))
+
+  // Track known PS numbers so we can detect new arrivals and ping
+  const knownPs = useRef(null)
+
+  const applyLoaded = (orders, history, { ping = false } = {}) => {
+    setOrders(orders)
+    setHistory(history)
+    const ds = new Set([...orders, ...history].filter(o => o.dispatched).map(o => o.id))
+    setDispatchedIds(ds)
+    // New-order detection
+    const currentPs = new Set(orders.map(o => o.psNo))
+    if (ping && knownPs.current) {
+      const fresh = [...currentPs].filter(ps => !knownPs.current.has(ps))
+      if (fresh.length > 0) {
+        playPing()
+        notify(`${fresh.length} new order${fresh.length !== 1 ? 's' : ''} arrived: ${fresh.join(', ')}`, 'info')
+      }
+    }
+    knownPs.current = currentPs
+  }
 
   // Load live data from the sheet (when configured)
-  const loadOrders = async () => {
+  const loadOrders = async (opts = {}) => {
     if (!LIVE) return
     try {
       const { orders, history } = await fetchOrders()
-      setOrders(orders)
-      setHistory(history)
-      // Seed dispatched set from the server's `dispatched` flag
-      const ds = new Set([...orders, ...history].filter(o => o.dispatched).map(o => o.id))
-      setDispatchedIds(ds)
+      applyLoaded(orders, history, opts)
     } catch (err) {
       console.error('Failed to load orders:', err)
     } finally {
@@ -51,6 +77,13 @@ function Dashboard() {
 
   useEffect(() => { loadOrders() }, [])
 
+  // Auto-poll every 60s to catch new orders and ping
+  useEffect(() => {
+    if (!LIVE) return
+    const t = setInterval(() => loadOrders({ ping: true }), 60000)
+    return () => clearInterval(t)
+  }, [])
+
   const source = activeTab === 'history' ? history : orders
 
   const filtered = useMemo(() => source.filter(o => {
@@ -59,7 +92,8 @@ function Dashboard() {
       const q = search.toLowerCase()
       if (!o.psNo.toLowerCase().includes(q) &&
           !o.customer.company.toLowerCase().includes(q) &&
-          !o.address.city.toLowerCase().includes(q)) return false
+          !o.address.city.toLowerCase().includes(q) &&
+          !String(o.waybillNo || '').toLowerCase().includes(q)) return false
     }
     if (dateFrom && new Date(o.dateReceived) < new Date(dateFrom)) return false
     if (dateTo) {
@@ -94,6 +128,27 @@ function Dashboard() {
         .then(() => { if (triggersRequote) loadOrders() })
         .catch(err => { console.error('Update failed:', err); loadOrders() })
     }
+  }
+
+  // Bulk apply the same change to many orders
+  const bulkUpdate = (ids, changes) => {
+    ids.forEach(id => updateOrder(id, changes))
+    const what = changes.buyLabel ? 'approved + buy label'
+      : changes.approved ? 'approved'
+      : changes.selectedCourier ? `courier set to ${changes.selectedCourier}`
+      : 'updated'
+    notify(`${ids.length} order${ids.length !== 1 ? 's' : ''} ${what}`)
+  }
+
+  // Save a note (everyone can do this)
+  const saveOrderNote = (id, note) => {
+    const order = [...orders, ...history].find(o => o.id === id)
+    if (!order) return
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, note } : o))
+    setHistory(prev => prev.map(o => o.id === id ? { ...o, note } : o))
+    addLog(user, 'Updated note', `PS ${order.psNo}`)
+    notify('Note saved')
+    if (LIVE) apiSaveNote(order.psNo, note).catch(err => console.error('Save note failed:', err))
   }
 
   const deleteOrder = (id) => {
@@ -189,7 +244,7 @@ function Dashboard() {
                   dateTo={dateTo} setDateTo={setDateTo} />
                 <OrdersTable orders={filtered} selectedId={selectedId}
                   onSelect={(id) => setSelectedId(prev => prev === id ? null : id)}
-                  onUpdate={updateOrder} />
+                  onUpdate={updateOrder} onBulkUpdate={bulkUpdate} />
               </>
             )}
           </>
@@ -198,7 +253,10 @@ function Dashboard() {
 
       <OrderPanel order={selectedOrder} onClose={() => setSelectedId(null)}
         onUpdate={(changes) => selectedOrder && updateOrder(selectedOrder.id, changes)}
-        onDelete={() => selectedOrder && deleteOrder(selectedOrder.id)} />
+        onDelete={() => selectedOrder && deleteOrder(selectedOrder.id)}
+        onSaveNote={(note) => selectedOrder && saveOrderNote(selectedOrder.id, note)} />
+
+      <Toasts toasts={toasts} remove={removeToast} />
     </div>
   )
 }

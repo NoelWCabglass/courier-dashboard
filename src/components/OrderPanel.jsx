@@ -30,7 +30,7 @@ function Field({ label, value, editing, onChange, placeholder, type = 'text' }) 
   )
 }
 
-export default function OrderPanel({ order, onClose, onUpdate, onDelete }) {
+export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote }) {
   const { user } = useAuth()
   const canEdit = user?.role === 'admin' || user?.role === 'general'
   const open = !!order
@@ -41,8 +41,13 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete }) {
   const [editContact, setEditContact] = useState(null)
   const [editAddress, setEditAddress] = useState(null)
   const [editItems, setEditItems] = useState(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteDirty, setNoteDirty] = useState(false)
 
-  useEffect(() => { setEditing(false); setConfirmDelete(false) }, [order?.id])
+  useEffect(() => {
+    setEditing(false); setConfirmDelete(false)
+    setNoteDraft(order?.note || ''); setNoteDirty(false)
+  }, [order?.id])
 
   const startEdit = () => {
     setEditContact({ ...order.customer })
@@ -145,9 +150,36 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete }) {
               {/* Sales read-only notice */}
               {!canEdit && (
                 <div className="bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 rounded-xl p-3 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="font-medium">View only</span> — contact an admin to make changes.
+                  <span className="font-medium">View only</span> — you can still add a note below; other changes need an admin.
                 </div>
               )}
+
+              {/* Notes — everyone can add/edit */}
+              <section>
+                <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Note</h3>
+                <textarea
+                  value={noteDraft}
+                  onChange={e => { setNoteDraft(e.target.value); setNoteDirty(true) }}
+                  placeholder="Add a note everyone can see — e.g. customer collecting, fragile, extra wrap…"
+                  rows={3}
+                  className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 resize-y"
+                />
+                {noteDirty && (
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => { onSaveNote(noteDraft); setNoteDirty(false) }}
+                      style={{ backgroundColor: '#FECD28' }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#111111]">
+                      <Check size={13} /> Save note
+                    </button>
+                    <button
+                      onClick={() => { setNoteDraft(order.note || ''); setNoteDirty(false) }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </section>
 
               {/* Customer / Contact */}
               <section>

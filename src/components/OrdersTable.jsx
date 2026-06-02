@@ -1,4 +1,5 @@
-import { ExternalLink, AlertTriangle, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
+import { ExternalLink, AlertTriangle, ChevronRight, CheckCircle2, StickyNote, X } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import OrderCard from './OrderCard'
@@ -15,10 +16,25 @@ const COURIER_COLORS = {
   Triangle: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
 }
 
-export default function OrdersTable({ orders, selectedId, onSelect, onUpdate }) {
+export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onBulkUpdate }) {
   const { can } = useAuth()
   const canEdit = can('canEdit')
   const isTerminal = (o) => [STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED].includes(o.status)
+
+  const [picked, setPicked] = useState(() => new Set())
+  // only non-terminal rows are bulk-selectable
+  const selectable = orders.filter(o => !isTerminal(o))
+  const togglePick = (id) => setPicked(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
+  })
+  const allPicked = selectable.length > 0 && selectable.every(o => picked.has(o.id))
+  const toggleAll = () => setPicked(allPicked ? new Set() : new Set(selectable.map(o => o.id)))
+  const clearPicked = () => setPicked(new Set())
+  const applyBulk = (changes) => {
+    onBulkUpdate(Array.from(picked), changes)
+    clearPicked()
+  }
+  const pickedCount = picked.size
 
   if (orders.length === 0) {
     return (
@@ -43,12 +59,39 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate }) 
         </p>
       </div>
 
+      {/* Bulk action bar (desktop, admin/general) */}
+      {canEdit && pickedCount > 0 && (
+        <div className="hidden lg:flex items-center gap-3 mb-3 bg-[#111111] text-white rounded-xl px-4 py-2.5 shadow-lg">
+          <span className="text-sm font-semibold">{pickedCount} selected</span>
+          <div className="h-4 w-px bg-white/20" />
+          <button onClick={() => applyBulk({ approved: true })}
+            className="flex items-center gap-1.5 text-sm font-medium hover:text-brand transition-colors">
+            <CheckCircle2 size={14} /> Approve
+          </button>
+          <button onClick={() => applyBulk({ approved: true, buyLabel: true })}
+            className="text-sm font-medium hover:text-brand transition-colors">Approve + Buy Label</button>
+          <div className="h-4 w-px bg-white/20" />
+          <span className="text-sm text-white/60">Set courier:</span>
+          {['TCG', 'EPX', 'Triangle'].map(c => (
+            <button key={c} onClick={() => applyBulk({ selectedCourier: c })}
+              className="text-sm font-semibold hover:text-brand transition-colors">{c}</button>
+          ))}
+          <button onClick={clearPicked} className="ml-auto text-white/60 hover:text-white"><X size={16} /></button>
+        </div>
+      )}
+
       {/* Desktop table view */}
       <div className="hidden lg:block bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
+              {canEdit && (
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" checked={allPicked} onChange={toggleAll}
+                    className="accent-[#FECD28] w-4 h-4 cursor-pointer" title="Select all" />
+                </th>
+              )}
               {['PS No', 'Customer', 'Destination', 'TCG', 'EPX', 'Courier', 'Approved', 'Buy Label', 'Status', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
@@ -68,6 +111,15 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate }) 
                       ? 'border-brand bg-brand/5 dark:bg-brand/10'
                       : 'border-transparent hover:bg-slate-50/80 dark:hover:bg-slate-700/40'}`}>
 
+                  {canEdit && (
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      {!terminal && (
+                        <input type="checkbox" checked={picked.has(order.id)} onChange={() => togglePick(order.id)}
+                          className="accent-[#FECD28] w-4 h-4 cursor-pointer" />
+                      )}
+                    </td>
+                  )}
+
                   <td className="px-4 py-3 whitespace-nowrap">
                     <a href={order.psUrl} target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
@@ -78,7 +130,10 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate }) 
                   </td>
 
                   <td className="px-4 py-3">
-                    <p className="font-medium text-slate-800 dark:text-slate-200 leading-tight">{order.customer.company}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 leading-tight flex items-center gap-1.5">
+                      {order.customer.company}
+                      {order.note && <StickyNote size={12} className="text-amber-500 shrink-0" title={order.note} />}
+                    </p>
                     {order.customer.contact && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{order.customer.contact}</p>}
                   </td>
 

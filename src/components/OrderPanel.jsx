@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check } from 'lucide-react'
+import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import { STATUS } from '../mockData'
@@ -30,7 +30,7 @@ function Field({ label, value, editing, onChange, placeholder, type = 'text' }) 
   )
 }
 
-export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote }) {
+export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote, onMoveToHistory }) {
   const { user } = useAuth()
   const canEdit = user?.role === 'admin' || user?.role === 'general'
   const open = !!order
@@ -399,6 +399,16 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                       )}
                     </div>
                   </div>
+                </section>
+              )}
+
+              {/* Move to History — booked orders only */}
+              {canEdit && onMoveToHistory && !editing && order.status === STATUS.BOOKED && (
+                <section>
+                  <button onClick={onMoveToHistory}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:border-brand hover:bg-brand/5 transition-colors">
+                    <Archive size={15} /> Move to History
+                  </button>
                 </section>
               )}
 

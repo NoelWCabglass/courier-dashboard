@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, AlertTriangle, ChevronRight, CheckCircle2, StickyNote, X } from 'lucide-react'
+import { ExternalLink, AlertTriangle, ChevronRight, CheckCircle2, StickyNote, X, Archive } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import OrderCard from './OrderCard'
@@ -16,14 +16,17 @@ const COURIER_COLORS = {
   Triangle: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
 }
 
-export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onBulkUpdate }) {
+export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onBulkUpdate, onMoveToHistory }) {
   const { can } = useAuth()
   const canEdit = can('canEdit')
+  // terminal = can't edit fields (booked / mid-booking / failed)
   const isTerminal = (o) => [STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED].includes(o.status)
+  const isBooked = (o) => o.status === STATUS.BOOKED
+  // selectable = anything except mid-booking / failed (so booked CAN be picked for History)
+  const canSelect = (o) => o.status !== STATUS.BOOKING && o.status !== STATUS.BOOKING_FAILED
 
   const [picked, setPicked] = useState(() => new Set())
-  // only non-terminal rows are bulk-selectable
-  const selectable = orders.filter(o => !isTerminal(o))
+  const selectable = orders.filter(canSelect)
   const togglePick = (id) => setPicked(prev => {
     const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
   })
@@ -34,7 +37,13 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
     onBulkUpdate(Array.from(picked), changes)
     clearPicked()
   }
+  const moveSelected = () => {
+    onMoveToHistory(Array.from(picked))
+    clearPicked()
+  }
   const pickedCount = picked.size
+  const pickedBookedCount = orders.filter(o => picked.has(o.id) && isBooked(o)).length
+  const pickedActiveCount = pickedCount - pickedBookedCount
 
   if (orders.length === 0) {
     return (
@@ -61,21 +70,36 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
 
       {/* Bulk action bar (desktop, admin/general) */}
       {canEdit && pickedCount > 0 && (
-        <div className="hidden lg:flex items-center gap-3 mb-3 bg-[#111111] text-white rounded-xl px-4 py-2.5 shadow-lg">
+        <div className="hidden lg:flex items-center gap-3 mb-3 bg-[#111111] text-white rounded-xl px-4 py-2.5 shadow-lg flex-wrap">
           <span className="text-sm font-semibold">{pickedCount} selected</span>
-          <div className="h-4 w-px bg-white/20" />
-          <button onClick={() => applyBulk({ approved: true })}
-            className="flex items-center gap-1.5 text-sm font-medium hover:text-brand transition-colors">
-            <CheckCircle2 size={14} /> Approve
-          </button>
-          <button onClick={() => applyBulk({ approved: true, buyLabel: true })}
-            className="text-sm font-medium hover:text-brand transition-colors">Approve + Buy Label</button>
-          <div className="h-4 w-px bg-white/20" />
-          <span className="text-sm text-white/60">Set courier:</span>
-          {['TCG', 'EPX', 'Triangle'].map(c => (
-            <button key={c} onClick={() => applyBulk({ selectedCourier: c })}
-              className="text-sm font-semibold hover:text-brand transition-colors">{c}</button>
-          ))}
+
+          {pickedActiveCount > 0 && (
+            <>
+              <div className="h-4 w-px bg-white/20" />
+              <button onClick={() => applyBulk({ approved: true })}
+                className="flex items-center gap-1.5 text-sm font-medium hover:text-brand transition-colors">
+                <CheckCircle2 size={14} /> Approve
+              </button>
+              <button onClick={() => applyBulk({ approved: true, buyLabel: true })}
+                className="text-sm font-medium hover:text-brand transition-colors">Approve + Buy Label</button>
+              <span className="text-sm text-white/60 ml-1">Courier:</span>
+              {['TCG', 'EPX', 'Triangle'].map(c => (
+                <button key={c} onClick={() => applyBulk({ selectedCourier: c })}
+                  className="text-sm font-semibold hover:text-brand transition-colors">{c}</button>
+              ))}
+            </>
+          )}
+
+          {pickedBookedCount > 0 && (
+            <>
+              <div className="h-4 w-px bg-white/20" />
+              <button onClick={moveSelected}
+                className="flex items-center gap-1.5 text-sm font-semibold text-brand hover:brightness-110 transition-colors">
+                <Archive size={14} /> Move {pickedBookedCount} booked to History
+              </button>
+            </>
+          )}
+
           <button onClick={clearPicked} className="ml-auto text-white/60 hover:text-white"><X size={16} /></button>
         </div>
       )}
@@ -113,7 +137,7 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
 
                   {canEdit && (
                     <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                      {!terminal && (
+                      {canSelect(order) && (
                         <input type="checkbox" checked={picked.has(order.id)} onChange={() => togglePick(order.id)}
                           className="accent-[#FECD28] w-4 h-4 cursor-pointer" />
                       )}

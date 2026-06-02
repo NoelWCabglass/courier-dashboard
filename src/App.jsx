@@ -3,7 +3,7 @@ import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched, archiveBooked, saveNote as apiSaveNote } from './api'
+import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched, archiveBooked, archiveOrders as apiArchiveOrders, saveNote as apiSaveNote } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
 import Toasts from './components/Toasts'
@@ -140,6 +140,27 @@ function Dashboard() {
     notify(`${ids.length} order${ids.length !== 1 ? 's' : ''} ${what}`)
   }
 
+  // Move specific booked orders to History (bulk or single)
+  const moveToHistory = async (ids) => {
+    if (!LIVE) { notify('Archiving works on the live site only.', 'warning'); return }
+    const targets = [...orders].filter(o => ids.includes(o.id) && o.status === STATUS.BOOKED)
+    if (targets.length === 0) { notify('No booked orders in selection.', 'warning'); return }
+    // optimistic remove
+    const psNos = targets.map(o => o.psNo)
+    setOrders(prev => prev.filter(o => !targets.find(t => t.id === o.id)))
+    setSelectedId(null)
+    addLog(user, 'Moved booked to History', `${targets.length} order(s)`)
+    try {
+      const res = await apiArchiveOrders(psNos)
+      notify(`Moved ${res.moved} order${res.moved !== 1 ? 's' : ''} to History`)
+      await loadOrders()
+    } catch (err) {
+      console.error('Move to history failed:', err)
+      notify('Move to history failed', 'warning')
+      loadOrders()
+    }
+  }
+
   // Save a note (everyone can do this)
   const saveOrderNote = (id, note) => {
     const order = [...orders, ...history].find(o => o.id === id)
@@ -244,7 +265,8 @@ function Dashboard() {
                   dateTo={dateTo} setDateTo={setDateTo} />
                 <OrdersTable orders={filtered} selectedId={selectedId}
                   onSelect={(id) => setSelectedId(prev => prev === id ? null : id)}
-                  onUpdate={updateOrder} onBulkUpdate={bulkUpdate} />
+                  onUpdate={updateOrder} onBulkUpdate={bulkUpdate}
+                  onMoveToHistory={moveToHistory} />
               </>
             )}
           </>
@@ -254,7 +276,8 @@ function Dashboard() {
       <OrderPanel order={selectedOrder} onClose={() => setSelectedId(null)}
         onUpdate={(changes) => selectedOrder && updateOrder(selectedOrder.id, changes)}
         onDelete={() => selectedOrder && deleteOrder(selectedOrder.id)}
-        onSaveNote={(note) => selectedOrder && saveOrderNote(selectedOrder.id, note)} />
+        onSaveNote={(note) => selectedOrder && saveOrderNote(selectedOrder.id, note)}
+        onMoveToHistory={() => selectedOrder && moveToHistory([selectedOrder.id])} />
 
       <Toasts toasts={toasts} remove={removeToast} />
     </div>

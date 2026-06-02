@@ -3,7 +3,7 @@ import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, markDispatched as apiMarkDispatched, archiveBooked, archiveOrders as apiArchiveOrders, saveNote as apiSaveNote } from './api'
+import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, saveNote as apiSaveNote, setPacked as apiSetPacked } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
 import Toasts from './components/Toasts'
@@ -24,7 +24,7 @@ function Dashboard() {
   const [archiving, setArchiving] = useState(false)
   const [orders, setOrders] = useState(LIVE ? [] : mockOrders)
   const [history, setHistory] = useState(LIVE ? [] : mockHistory)
-  const [dispatchedIds, setDispatchedIds] = useState(() => new Set())
+  const [packedIds, setPackedIds] = useState(() => new Set())
   const [loading, setLoading] = useState(LIVE)
   const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB[user?.role] ?? 'orders')
@@ -48,8 +48,8 @@ function Dashboard() {
   const applyLoaded = (orders, history, { ping = false } = {}) => {
     setOrders(orders)
     setHistory(history)
-    const ds = new Set([...orders, ...history].filter(o => o.dispatched).map(o => o.id))
-    setDispatchedIds(ds)
+    const ps = new Set([...orders, ...history].filter(o => o.packed).map(o => o.id))
+    setPackedIds(ps)
     // New-order detection
     const currentPs = new Set(orders.map(o => o.psNo))
     if (ping && knownPs.current) {
@@ -196,16 +196,24 @@ function Dashboard() {
     })
   }
 
-  const toggleDispatch = (id) => {
+  // Stage 1: mark packed (toggle)
+  const togglePacked = (id) => {
     const order = [...orders, ...history].find(o => o.id === id)
-    const willDispatch = !dispatchedIds.has(id)
-    setDispatchedIds(prev => {
+    const willPack = !packedIds.has(id)
+    setPackedIds(prev => {
       const next = new Set(prev)
-      willDispatch ? next.add(id) : next.delete(id)
+      willPack ? next.add(id) : next.delete(id)
       return next
     })
-    if (order) addLog(user, willDispatch ? 'Marked dispatched' : 'Marked not dispatched', `PS ${order.psNo}`)
-    if (LIVE && order) apiMarkDispatched(order.psNo, willDispatch).catch(err => console.error('Dispatch update failed:', err))
+    if (order) addLog(user, willPack ? 'Marked packed' : 'Marked not packed', `PS ${order.psNo}`)
+    if (LIVE && order) apiSetPacked(order.psNo, willPack).catch(err => console.error('Packed update failed:', err))
+  }
+
+  // Stage 2: dispatched → archive to History
+  const dispatchOrder = (id) => {
+    const order = [...orders, ...history].find(o => o.id === id)
+    if (order) notify(`PS ${order.psNo} dispatched → moved to History`)
+    moveToHistory([id])
   }
 
   const handleArchive = async () => {
@@ -257,7 +265,7 @@ function Dashboard() {
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'dispatch' && (
               <DispatchTab orders={orders} history={history}
-                dispatchedIds={dispatchedIds} onToggleDispatch={toggleDispatch} />
+                packedIds={packedIds} onTogglePacked={togglePacked} onDispatch={dispatchOrder} />
             )}
             {activeTab === 'admin'    && <AdminPage orders={orders} history={history} />}
 

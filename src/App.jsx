@@ -205,7 +205,7 @@ function Dashboard() {
       willPack ? next.add(id) : next.delete(id)
       return next
     })
-    if (order) addLog(user, willPack ? 'Marked packed' : 'Marked not packed', `PS ${order.psNo}`)
+    if (order) addLog(user, willPack ? 'Marked picked' : 'Marked not picked', `PS ${order.psNo}`)
     if (LIVE && order) apiSetPacked(order.psNo, willPack).catch(err => console.error('Packed update failed:', err))
   }
 

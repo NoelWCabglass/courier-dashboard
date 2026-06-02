@@ -3,6 +3,7 @@ import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import { STATUS } from '../mockData'
 import { useAuth } from '../context/AuthContext'
+import { getOrderIssues } from '../validation'
 
 const fmt = (n) => n != null ? `R ${Number(n).toFixed(2)}` : '—'
 
@@ -40,7 +41,9 @@ export default function OrderCard({ order, selected, onSelect, onUpdate }) {
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <StatusBadge status={order.status} />
-          {order.errorMessage && <AlertTriangle size={14} className="text-red-500" />}
+          {order.errorMessage
+            ? <AlertTriangle size={14} className="text-red-500" />
+            : (getOrderIssues(order).length > 0 && <AlertTriangle size={14} className="text-amber-500" />)}
         </div>
       </div>
 

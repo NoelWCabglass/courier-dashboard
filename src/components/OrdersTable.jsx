@@ -4,6 +4,7 @@ import Toggle from './Toggle'
 import OrderCard from './OrderCard'
 import { STATUS } from '../mockData'
 import { useAuth } from '../context/AuthContext'
+import { getOrderIssues } from '../validation'
 
 const fmt = (n) => n != null ? `R ${Number(n).toFixed(2)}` : '—'
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -125,7 +126,14 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate }) 
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={order.status} />
-                      {order.errorMessage && <AlertTriangle size={14} className="text-red-500 shrink-0" title={order.errorMessage} />}
+                      {order.errorMessage
+                        ? <AlertTriangle size={14} className="text-red-500 shrink-0" title={order.errorMessage} />
+                        : (() => {
+                            const issues = getOrderIssues(order)
+                            return issues.length > 0
+                              ? <AlertTriangle size={14} className="text-amber-500 shrink-0" title={'Possible issue:\n' + issues.join('\n')} />
+                              : null
+                          })()}
                     </div>
                     {order.waybillNo && (
                       <a href={order.waybillLink} target="_blank" rel="noopener noreferrer"

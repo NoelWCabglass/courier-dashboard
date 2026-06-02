@@ -4,6 +4,7 @@ import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import { STATUS } from '../mockData'
 import { useAuth } from '../context/AuthContext'
+import { getOrderIssues } from '../validation'
 
 const fmt = (n) => n != null ? `R ${Number(n).toFixed(2)}` : null
 
@@ -116,13 +117,30 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete }) {
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             <div className="p-5 space-y-5">
 
-              {/* Error */}
+              {/* Error from the sheet */}
               {order.errorMessage && (
                 <div className="flex gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3.5">
                   <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
                   <p className="text-sm text-red-700 dark:text-red-400 leading-relaxed">{order.errorMessage}</p>
                 </div>
               )}
+
+              {/* Safety-net warnings (dashboard-side checks) */}
+              {!order.errorMessage && (() => {
+                const issues = getOrderIssues(order)
+                if (issues.length === 0) return null
+                return (
+                  <div className="flex gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3.5">
+                    <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">Possible issues — please check</p>
+                      <ul className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed list-disc list-inside space-y-0.5">
+                        {issues.map((iss, i) => <li key={i}>{iss}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Sales read-only notice */}
               {!canEdit && (

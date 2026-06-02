@@ -447,6 +447,13 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                 </section>
               )}
 
+              {/* Subtle booking timestamp */}
+              {order.bookedAt && (
+                <p className="text-[11px] text-slate-300 dark:text-slate-600 text-center pt-2">
+                  Booked {new Date(order.bookedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
+              )}
+
             </div>
           </div>
         </>)}

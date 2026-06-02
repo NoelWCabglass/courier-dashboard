@@ -12,12 +12,6 @@ const COURIER_COLORS = {
   Triangle: 'bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700',
 }
 
-// Returns { label, url } for the courier-specific document, or null.
-function printDoc(order) {
-  if (order.selectedCourier === 'TCG' && order.waybillLink) return { label: 'Print Waybill', url: order.waybillLink }
-  if (order.selectedCourier === 'EPX' && order.epxLabels)   return { label: 'Print Label', url: order.epxLabels }
-  return null
-}
 
 // ============================================================
 // FULL-PAGE DETAIL
@@ -64,23 +58,14 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch })
       {/* Waybill */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6 mb-4">
         <p className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Waybill Number</p>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {order.waybillLink ? (
-            <a href={order.waybillLink} target="_blank" rel="noopener noreferrer"
-              className="text-2xl font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2">
-              {order.waybillNo} <ExternalLink size={18} />
-            </a>
-          ) : (
-            <p className="text-2xl font-mono font-bold text-slate-900 dark:text-slate-100">{order.waybillNo || '—'}</p>
-          )}
-          {printDoc(order) && (
-            <a href={printDoc(order).url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-bold text-[#111111]"
-              style={{ backgroundColor: '#FECD28' }}>
-              <Printer size={18} /> {printDoc(order).label}
-            </a>
-          )}
-        </div>
+        {order.waybillLink ? (
+          <a href={order.waybillLink} target="_blank" rel="noopener noreferrer"
+            className="text-2xl font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2">
+            {order.waybillNo} <ExternalLink size={18} />
+          </a>
+        ) : (
+          <p className="text-2xl font-mono font-bold text-slate-900 dark:text-slate-100">{order.waybillNo || '—'}</p>
+        )}
       </div>
 
       {/* What must go */}
@@ -177,14 +162,6 @@ function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
           <span className="text-sm font-mono font-semibold text-slate-500 dark:text-slate-400">{order.waybillNo || 'No waybill'}</span>
         </div>
       </button>
-
-      {/* Print doc button (courier-specific) */}
-      {printDoc(order) && (
-        <a href={printDoc(order).url} target="_blank" rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 mt-3 py-2 rounded-xl text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors">
-          <Printer size={15} /> {printDoc(order).label}
-        </a>
-      )}
 
       {/* Stage buttons */}
       <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">

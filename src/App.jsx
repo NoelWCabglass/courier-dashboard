@@ -46,7 +46,20 @@ function Dashboard() {
   // Track known PS numbers so we can detect new arrivals and ping
   const knownPs = useRef(null)
 
-  const applyLoaded = (orders, history, { ping = false } = {}) => {
+  // De-duplicate by PS number (defends against duplicate sheet rows so the UI
+  // doesn't flicker from duplicate React keys). Keeps the first occurrence.
+  const dedupe = (list) => {
+    const seen = new Set()
+    return (list || []).filter(o => {
+      if (seen.has(o.psNo)) return false
+      seen.add(o.psNo)
+      return true
+    })
+  }
+
+  const applyLoaded = (rawOrders, rawHistory, { ping = false } = {}) => {
+    const orders = dedupe(rawOrders)
+    const history = dedupe(rawHistory)
     setOrders(orders)
     setHistory(history)
     const ps = new Set([...orders, ...history].filter(o => o.packed).map(o => o.id))

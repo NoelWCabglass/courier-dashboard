@@ -35,9 +35,45 @@ export function openManifest(orders, history, courier, opts = {}) {
       ? ['TCG', 'EPX', 'Triangle'].map(c => ({ name: c, items: rows.filter(o => o.selectedCourier === c) })).filter(g => g.items.length)
       : [{ name: 'All orders', items: rows }]
 
+  const picking = opts.picking === true
+
   const sectionHtml = (g) => {
     const secParcels = g.items.reduce((s, o) => s + parcels(o), 0)
     const secWeight = g.items.reduce((s, o) => s + weight(o), 0)
+
+    if (picking) {
+      // Picking list: only what the warehouse needs to pull the glass
+      return `
+      <h2>${esc(g.name)} — ${g.items.length} order${g.items.length !== 1 ? 's' : ''}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>PS No</th><th>Parts (SKU × qty)</th><th>Dimensions / Weight</th>
+            <th>Parcels</th><th>Total kg</th><th>Picked</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${g.items.map(o => `
+            <tr>
+              <td><strong>${esc(o.psNo)}</strong></td>
+              <td>${itemsText(o.items)}</td>
+              <td class="sub">${dimsText(o.items)}</td>
+              <td class="center">${parcels(o)}</td>
+              <td class="center">${weight(o).toFixed(1)}</td>
+              <td class="center">☐</td>
+            </tr>
+          `).join('')}
+          <tr class="subtotal">
+            <td colspan="3" style="text-align:right">Total:</td>
+            <td class="center">${secParcels}</td>
+            <td class="center">${secWeight.toFixed(1)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    `
+    }
+
     return `
     <h2>${esc(g.name)} — ${g.items.length} shipment${g.items.length !== 1 ? 's' : ''}</h2>
     <table>

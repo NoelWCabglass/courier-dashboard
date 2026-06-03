@@ -200,7 +200,7 @@ export default function StagedTab({ orders, stagedIds, onTogglePicked }) {
         <span className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
           <Printer size={15} /> Picking list:
         </span>
-        <button onClick={() => openManifest(staged, [], 'ALL', { requireBooked: false, title: 'Picking List' })}
+        <button onClick={() => openManifest(staged, [], 'ALL', { requireBooked: false, picking: true, title: 'Picking List' })}
           className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand hover:bg-brand/5 transition-colors">
           Print all
         </button>

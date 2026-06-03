@@ -16,12 +16,16 @@ const parcels = (o) => o.items.reduce((s, it) => s + (Number(it.qty) || 0), 0)
 const weight  = (o) => o.items.reduce((s, it) => s + (Number(it.kg) || 0) * (Number(it.qty) || 0), 0)
 
 // courier: 'TCG' | 'EPX' | 'ALL'
-export function openManifest(orders, history, courier) {
-  const booked = [...(orders || []), ...(history || [])].filter(o => o.status === STATUS.BOOKED)
-  const rows = courier === 'ALL' ? booked : booked.filter(o => o.selectedCourier === courier)
+// opts.requireBooked (default true) — set false for picking lists (non-booked orders)
+// opts.title — override the heading
+export function openManifest(orders, history, courier, opts = {}) {
+  const requireBooked = opts.requireBooked !== false
+  const pool = [...(orders || []), ...(history || [])]
+  const eligible = requireBooked ? pool.filter(o => o.status === STATUS.BOOKED) : pool
+  const rows = courier === 'ALL' ? eligible : eligible.filter(o => o.selectedCourier === courier)
 
   const dateStr = new Date().toLocaleString('en-ZA', { dateStyle: 'full', timeStyle: 'short' })
-  const title = courier === 'ALL' ? 'Combined Dispatch Manifest' : `${courier} Dispatch Manifest`
+  const title = opts.title || (courier === 'ALL' ? 'Combined Dispatch Manifest' : `${courier} Dispatch Manifest`)
 
   // Group by courier when ALL
   const groups = courier === 'ALL'

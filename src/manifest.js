@@ -27,10 +27,13 @@ export function openManifest(orders, history, courier, opts = {}) {
   const dateStr = new Date().toLocaleString('en-ZA', { dateStyle: 'full', timeStyle: 'short' })
   const title = opts.title || (courier === 'ALL' ? 'Combined Dispatch Manifest' : `${courier} Dispatch Manifest`)
 
-  // Group by courier when ALL
-  const groups = courier === 'ALL'
-    ? ['TCG', 'EPX', 'Triangle'].map(c => ({ name: c, items: rows.filter(o => o.selectedCourier === c) })).filter(g => g.items.length)
-    : [{ name: courier, items: rows }]
+  // Group by courier when ALL — but for picking lists (non-booked, often no
+  // courier yet), put everything in a single group instead.
+  const groups = courier !== 'ALL'
+    ? [{ name: courier, items: rows }]
+    : requireBooked
+      ? ['TCG', 'EPX', 'Triangle'].map(c => ({ name: c, items: rows.filter(o => o.selectedCourier === c) })).filter(g => g.items.length)
+      : [{ name: 'All orders', items: rows }]
 
   const sectionHtml = (g) => {
     const secParcels = g.items.reduce((s, o) => s + parcels(o), 0)

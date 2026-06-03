@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive } from 'lucide-react'
+import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive, ArrowLeft } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import { STATUS } from '../mockData'
@@ -30,7 +30,7 @@ function Field({ label, value, editing, onChange, placeholder, type = 'text' }) 
   )
 }
 
-export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote, onMoveToHistory, inHistory }) {
+export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote, onMoveToHistory, onRestore, inHistory }) {
   const { user } = useAuth()
   const canEdit = user?.role === 'admin' || user?.role === 'general'
   const open = !!order
@@ -399,6 +399,16 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                       )}
                     </div>
                   </div>
+                </section>
+              )}
+
+              {/* Restore to Orders — for orders sitting in History */}
+              {canEdit && onRestore && !editing && inHistory && (
+                <section>
+                  <button onClick={() => { if (confirm(`Restore ${order.psNo} back to Orders?`)) onRestore() }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:border-brand hover:bg-brand/5 transition-colors">
+                    <ArrowLeft size={15} /> Restore to Orders
+                  </button>
                 </section>
               )}
 

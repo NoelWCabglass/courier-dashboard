@@ -219,6 +219,25 @@ function Dashboard() {
     }
   }
 
+  // Restore an order from History back to Orders (by id)
+  const restoreFromHistory = async (id) => {
+    const order = history.find(o => o.id === id)
+    if (!order) return
+    if (!LIVE) { notify('Restore works on the live site only.', 'warning'); return }
+    setHistory(prev => prev.filter(o => o.id !== id))
+    setSelectedId(null)
+    addLog(user, 'Restored from History to Orders', `PS ${order.psNo}`)
+    try {
+      await restoreOrders([order.psNo])
+      notify(`PS ${order.psNo} restored to Orders`)
+      await loadOrders()
+    } catch (err) {
+      console.error('Restore failed:', err)
+      notify('Restore failed', 'warning')
+      loadOrders()
+    }
+  }
+
   // Undo a dispatch: bring the order back from History to Pending
   const undoDispatch = async (psNo) => {
     if (!LIVE) { notify('Undo works on the live site only.', 'warning'); return }
@@ -319,6 +338,7 @@ function Dashboard() {
         onDelete={() => selectedOrder && deleteOrder(selectedOrder.id)}
         onSaveNote={(note) => selectedOrder && saveOrderNote(selectedOrder.id, note)}
         onMoveToHistory={() => selectedOrder && moveToHistory([selectedOrder.id])}
+        onRestore={() => selectedOrder && restoreFromHistory(selectedOrder.id)}
         inHistory={selectedInHistory} />
 
       <Toasts toasts={toasts} remove={removeToast} />

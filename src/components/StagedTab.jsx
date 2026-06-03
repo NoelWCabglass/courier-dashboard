@@ -108,7 +108,7 @@ function StagedCard({ order, isPicked, onOpen, onTogglePicked }) {
   const totalParcels = order.items.reduce((s, it) => s + (Number(it.qty) || 0), 0)
   return (
     <div className={`rounded-2xl border shadow-sm p-5 transition-all
-      ${isPicked ? 'border-green-300 dark:border-green-700 bg-green-50/40 dark:bg-green-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+      ${isPicked ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 opacity-60' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
       <button onClick={() => onOpen(order.id)} className="w-full text-left">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
@@ -130,10 +130,10 @@ function StagedCard({ order, isPicked, onOpen, onTogglePicked }) {
         <button onClick={() => onTogglePicked(order.id)}
           className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all
             ${isPicked
-              ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700'
+              ? 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:border-brand'
               : 'text-[#111111] hover:brightness-95'}`}
           style={isPicked ? {} : { backgroundColor: '#FECD28' }}>
-          <Package size={15} /> {isPicked ? 'Picked ✓' : 'Mark Picked'}
+          <Package size={15} /> {isPicked ? 'Picked ✓ — tap to undo' : 'Mark Picked'}
         </button>
       </div>
     </div>

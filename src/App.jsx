@@ -3,6 +3,7 @@ import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
+import { useNotifications } from './hooks/useNotifications'
 import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked, setStaged as apiSetStaged } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
@@ -313,11 +314,21 @@ function Dashboard() {
     setDateFrom(''); setDateTo('')
   }
 
+  // Notifications derived from the orders already in memory (no extra fetch).
+  // Clicking one jumps to that order and opens its detail panel.
+  const openOrder = (notif) => {
+    const inHistory = !!history.find(o => o.id === notif.orderId)
+    setActiveTab(inHistory ? 'history' : 'orders')
+    setSelectedId(notif.orderId)
+  }
+  const notif = useNotifications(orders)
+  const notifications = { ...notif, onSelect: openOrder }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <Header activeTab={activeTab} setActiveTab={handleTabChange}
         onRefresh={handleRefresh} refreshing={refreshing}
-        dark={dark} toggleDark={toggleDark} />
+        dark={dark} toggleDark={toggleDark} notifications={notifications} />
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
         {loading ? (

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import NotificationBell from './NotificationBell'
 
-export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark }) {
+export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark, notifications }) {
   const { user, logout, can } = useAuth()
   const [isFs, setIsFs] = useState(false)
 
@@ -66,6 +67,17 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                 <p className="text-[10px] text-black/50 capitalize">{user?.role}</p>
               </div>
             </div>
+
+            {notifications && (
+              <NotificationBell
+                notifications={notifications.notifications}
+                unreadCount={notifications.unreadCount}
+                isRead={notifications.isRead}
+                onMarkRead={notifications.markRead}
+                onMarkAllRead={notifications.markAllRead}
+                onSelect={notifications.onSelect}
+              />
+            )}
 
             <button onClick={toggleDark} title={dark ? 'Light mode' : 'Dark mode'}
               className="p-2 rounded-md text-black/50 hover:text-black hover:bg-black/10 transition-colors">

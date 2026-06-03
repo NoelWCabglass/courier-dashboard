@@ -1,7 +1,10 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { LIVE, fetchActivity, logActivity } from '../api'
 
 const ActivityContext = createContext(null)
 
+// Mock data is only used when running locally on mock data (LIVE === false).
+// On the live site the log is loaded from, and written to, the server.
 const SEED = [
   { id: 1,  user: 'Claire', role: 'admin',   action: 'Signed in',            detail: '',           timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000) },
   { id: 2,  user: 'Claire', role: 'admin',   action: 'Approved shipment',    detail: 'PS 2-24519', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) },
@@ -16,8 +19,22 @@ const SEED = [
 ]
 
 export function ActivityProvider({ children }) {
-  const [log, setLog] = useState(SEED)
+  const [log, setLog] = useState(LIVE ? [] : SEED)
 
+  // Load the real, server-side log on the live site.
+  const refresh = useCallback(async () => {
+    if (!LIVE) return
+    try {
+      const rows = await fetchActivity(200)
+      setLog(rows.map((r, i) => ({ ...r, id: `${r.timestamp}-${i}` })))
+    } catch (err) {
+      console.error('Failed to load activity log:', err)
+    }
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  // Record an action: shows immediately (optimistic) and persists to the server.
   const addLog = (user, action, detail = '') => {
     setLog(prev => [{
       id: Date.now(),
@@ -27,10 +44,15 @@ export function ActivityProvider({ children }) {
       detail,
       timestamp: new Date(),
     }, ...prev].slice(0, 500))
+
+    if (LIVE) {
+      logActivity({ user: user.name, role: user.role, logAction: action, detail })
+        .catch(err => console.error('Failed to record activity:', err))
+    }
   }
 
   return (
-    <ActivityContext.Provider value={{ log, addLog }}>
+    <ActivityContext.Provider value={{ log, addLog, refresh }}>
       {children}
     </ActivityContext.Provider>
   )

@@ -31,6 +31,18 @@ export async function fetchUsers() {
   return data.users || []
 }
 
+// Server-side activity log (audit trail). Read the most recent entries.
+export async function fetchActivity(limit = 200) {
+  const url = `${API_URL}?action=getActivity&limit=${limit}&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load activity')
+  return data.activity || []
+}
+
+// Append one entry. `entry` = { user, role, logAction, detail }.
+export const logActivity = (entry) => post('logActivity', entry)
+
 export const saveUsers        = (users)              => post('saveUsers', { users })
 export const archiveBooked    = ()                   => post('archiveBooked')
 export const archiveOrders    = (psNumbers)          => post('archiveOrders', { psNumbers })

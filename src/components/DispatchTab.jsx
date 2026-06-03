@@ -43,7 +43,7 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, d
             </span>
             {isPacked && (
               <span className="inline-flex items-center gap-1 text-sm font-bold text-green-600 dark:text-green-400">
-                <Box size={14} /> Picked
+                <Box size={14} /> Labeled
               </span>
             )}
           </div>
@@ -141,7 +141,7 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, d
                 ${isPacked
                   ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-2 border-green-400 dark:border-green-700'
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-600 hover:border-brand'}`}>
-              <Box size={20} /> {isPacked ? 'Picked ✓ (tap to undo)' : 'Mark Picked'}
+              <Box size={20} /> {isPacked ? 'Labeled ✓ (tap to undo)' : 'Mark Labeled'}
             </button>
             <button onClick={() => { if (confirm(`Dispatch ${order.psNo}? It will move to History.`)) onDispatch(order.id) }}
               disabled={!isPacked}
@@ -151,7 +151,7 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, d
               <Truck size={20} /> Dispatch
             </button>
           </div>
-          {!isPacked && <p className="text-center text-sm text-slate-400 mt-2">Mark as picked before dispatching</p>}
+          {!isPacked && <p className="text-center text-sm text-slate-400 mt-2">Mark as labeled before dispatching</p>}
         </>
       )}
     </div>
@@ -177,7 +177,7 @@ function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
             <span className={`inline-flex px-2.5 py-1 rounded-full text-sm font-bold border ${COURIER_COLORS[order.selectedCourier] || 'bg-slate-50 border-slate-300 text-slate-600'}`}>
               {order.selectedCourier || '—'}
             </span>
-            {isPacked && <span className="inline-flex items-center gap-1 text-xs font-bold text-green-600 dark:text-green-400"><Box size={13} /> Picked</span>}
+            {isPacked && <span className="inline-flex items-center gap-1 text-xs font-bold text-green-600 dark:text-green-400"><Box size={13} /> Labeled</span>}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap pt-1">
@@ -198,7 +198,7 @@ function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
             ${isPacked
               ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700'
               : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:border-brand'}`}>
-          <Box size={15} /> {isPacked ? 'Picked ✓' : 'Pick'}
+          <Box size={15} /> {isPacked ? 'Labeled ✓' : 'Label'}
         </button>
         <button onClick={() => { if (confirm(`Dispatch ${order.psNo}? It will move to History.`)) onDispatch(order.id) }}
           disabled={!isPacked}
@@ -282,14 +282,14 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Truck size={22} className="text-slate-400" /> Dispatch
           </h2>
-          <p className="text-base text-slate-500 dark:text-slate-400 mt-0.5">Pick, then dispatch. Dispatched orders move to History.</p>
+          <p className="text-base text-slate-500 dark:text-slate-400 mt-0.5">Label, then dispatch. Dispatched orders move to History.</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-full px-3 py-1.5">
-            <Circle size={13} /> {toPack} to pick
+            <Circle size={13} /> {toPack} to label
           </span>
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-full px-3 py-1.5">
-            <Box size={13} /> {packedReady} picked
+            <Box size={13} /> {packedReady} labeled
           </span>
         </div>
       </div>

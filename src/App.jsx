@@ -3,7 +3,7 @@ import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked } from './api'
+import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked, setStaged as apiSetStaged } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
 import Toasts from './components/Toasts'
@@ -14,6 +14,7 @@ import OrdersTable from './components/OrdersTable'
 import OrderPanel from './components/OrderPanel'
 import UploadTab from './components/UploadTab'
 import DispatchTab from './components/DispatchTab'
+import StagedTab from './components/StagedTab'
 import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
 
@@ -25,6 +26,7 @@ function Dashboard() {
   const [orders, setOrders] = useState(LIVE ? [] : mockOrders)
   const [history, setHistory] = useState(LIVE ? [] : mockHistory)
   const [packedIds, setPackedIds] = useState(() => new Set())
+  const [stagedIds, setStagedIds] = useState(() => new Set())
   const [loading, setLoading] = useState(LIVE)
   const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB[user?.role] ?? 'orders')
@@ -64,6 +66,7 @@ function Dashboard() {
     setHistory(history)
     const ps = new Set([...orders, ...history].filter(o => o.packed).map(o => o.id))
     setPackedIds(ps)
+    setStagedIds(new Set([...orders, ...history].filter(o => o.staged).map(o => o.id)))
     // New-order detection
     const currentPs = new Set(orders.map(o => o.psNo))
     if (ping && knownPs.current) {
@@ -217,8 +220,21 @@ function Dashboard() {
       willPack ? next.add(id) : next.delete(id)
       return next
     })
-    if (order) addLog(user, willPack ? 'Marked picked' : 'Marked not picked', `PS ${order.psNo}`)
-    if (LIVE && order) apiSetPacked(order.psNo, willPack).catch(err => console.error('Packed update failed:', err))
+    if (order) addLog(user, willPack ? 'Marked labeled' : 'Marked not labeled', `PS ${order.psNo}`)
+    if (LIVE && order) apiSetPacked(order.psNo, willPack).catch(err => console.error('Label update failed:', err))
+  }
+
+  // Staged page: mark item physically picked (toggle)
+  const toggleStaged = (id) => {
+    const order = [...orders, ...history].find(o => o.id === id)
+    const willStage = !stagedIds.has(id)
+    setStagedIds(prev => {
+      const next = new Set(prev)
+      willStage ? next.add(id) : next.delete(id)
+      return next
+    })
+    if (order) addLog(user, willStage ? 'Marked picked (staged)' : 'Marked not picked (staged)', `PS ${order.psNo}`)
+    if (LIVE && order) apiSetStaged(order.psNo, willStage).catch(err => console.error('Staged update failed:', err))
   }
 
   // Stage 2: dispatched → archive to History
@@ -312,6 +328,9 @@ function Dashboard() {
         ) : (
           <>
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
+            {activeTab === 'staged' && (
+              <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} />
+            )}
             {activeTab === 'dispatch' && (
               <DispatchTab orders={orders} history={history}
                 packedIds={packedIds} onTogglePacked={togglePacked} onDispatch={dispatchOrder}

@@ -24,6 +24,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     { key: 'orders',    label: 'Orders',    show: can('canView') },
     { key: 'history',   label: 'History',   show: can('canView') },
     { key: 'upload',    label: 'Upload',    show: can('canUpload') },
+    { key: 'staged',    label: 'Staged',    show: can('canDispatch') },
     { key: 'dispatch',  label: 'Dispatch',  show: can('canDispatch') },
     { key: 'admin',     label: 'Admin',     show: can('canAdmin') },
   ].filter(t => t.show)

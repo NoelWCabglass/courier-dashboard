@@ -17,7 +17,7 @@ function formatTimestamp(ts) {
   })
 }
 
-export default function NotificationBell({ notifications, unreadCount, isRead, onMarkRead, onMarkAllRead, onSelect }) {
+export default function NotificationBell({ notifications, unreadCount, isRead, onMarkRead, onMarkAllRead, onSelect, onSendTest, canTest }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 
@@ -65,14 +65,24 @@ export default function NotificationBell({ notifications, unreadCount, isRead, o
                 <span className="text-[11px] font-medium text-red-600">{unreadCount} new</span>
               )}
             </div>
-            {notifications.length > 0 && unreadCount > 0 && (
-              <button
-                onClick={onMarkAllRead}
-                className="flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
-              >
-                <CheckCheck size={13} /> Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {canTest && onSendTest && (
+                <button
+                  onClick={onSendTest}
+                  className="text-[11px] font-medium text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 transition-colors"
+                >
+                  Send test
+                </button>
+              )}
+              {notifications.length > 0 && unreadCount > 0 && (
+                <button
+                  onClick={onMarkAllRead}
+                  className="flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
+                >
+                  <CheckCheck size={13} /> Mark all read
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}

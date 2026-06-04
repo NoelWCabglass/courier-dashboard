@@ -62,6 +62,10 @@ function buildNotifications(orders) {
   return list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 }
 
+// Manually-injected test notifications (the "Send test" button). Kept in
+// localStorage so they survive a refresh until dismissed.
+const TEST_KEY = 'cabglass_notif_test_v1'
+
 function loadReadIds() {
   try {
     return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) || [])
@@ -70,10 +74,42 @@ function loadReadIds() {
   }
 }
 
+function loadTest() {
+  try {
+    return JSON.parse(localStorage.getItem(TEST_KEY)) || []
+  } catch {
+    return []
+  }
+}
+
 export function useNotifications(orders) {
   const [readIds, setReadIds] = useState(loadReadIds)
+  const [testNotifs, setTestNotifs] = useState(loadTest)
 
-  const notifications = useMemo(() => buildNotifications(orders), [orders])
+  const persistTest = useCallback((arr) => {
+    setTestNotifs(arr)
+    try { localStorage.setItem(TEST_KEY, JSON.stringify(arr)) } catch {}
+  }, [])
+
+  // A demo notification so staff can see exactly how one looks.
+  const sendTest = useCallback(() => {
+    const n = {
+      id: `test::${Date.now()}`,
+      orderId: null,
+      psNo: 'TEST',
+      severity: 'info',
+      title: 'Test notification',
+      detail: 'This is a test so you can see how notifications look. Click it, or "Mark all read", to dismiss.',
+      timestamp: new Date().toISOString(),
+      isTest: true,
+    }
+    persistTest([n]) // replace, so repeated tests don't pile up
+  }, [persistTest])
+
+  const notifications = useMemo(() => {
+    const derived = buildNotifications(orders)
+    return [...testNotifs, ...derived].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  }, [orders, testNotifs])
 
   const persist = useCallback((set) => {
     setReadIds(set)
@@ -83,6 +119,14 @@ export function useNotifications(orders) {
   }, [])
 
   const markRead = useCallback((id) => {
+    // Dismissing a test notification removes it outright.
+    if (id.startsWith('test::')) {
+      setTestNotifs(prev => {
+        const arr = prev.filter(n => n.id !== id)
+        try { localStorage.setItem(TEST_KEY, JSON.stringify(arr)) } catch {}
+        return arr
+      })
+    }
     setReadIds(prev => {
       if (prev.has(id)) return prev
       const next = new Set(prev)
@@ -96,7 +140,8 @@ export function useNotifications(orders) {
     const next = new Set(readIds)
     notifications.forEach(n => next.add(n.id))
     persist(next)
-  }, [notifications, readIds, persist])
+    persistTest([]) // clear any test notifications too
+  }, [notifications, readIds, persist, persistTest])
 
   const unreadCount = notifications.reduce((n, x) => n + (readIds.has(x.id) ? 0 : 1), 0)
 
@@ -106,5 +151,6 @@ export function useNotifications(orders) {
     isRead: (id) => readIds.has(id),
     markRead,
     markAllRead,
+    sendTest,
   }
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { LIVE, fetchUsers, saveUsers } from '../api'
+import { LIVE, fetchUsers, saveUsers, logActivity } from '../api'
 
 const AuthContext = createContext(null)
 
@@ -103,7 +103,16 @@ export function AuthProvider({ children }) {
     const found = users.find(
       u => u.username === username.trim().toLowerCase() && u.password === password
     )
-    if (found) { setUser(found); writeSession(found); return found }
+    if (found) {
+      setUser(found); writeSession(found)
+      // Record the sign-in to the server audit trail (only on a real login,
+      // not on a session-restore reload).
+      if (LIVE) {
+        logActivity({ user: found.name, role: found.role, logAction: 'Signed in', detail: '' })
+          .catch(err => console.error('Failed to log sign-in:', err))
+      }
+      return found
+    }
     return null
   }
 

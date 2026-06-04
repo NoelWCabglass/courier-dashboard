@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { LIVE, fetchActivity, logActivity } from '../api'
+import { useAuth } from './AuthContext'
 
 const ActivityContext = createContext(null)
 
@@ -19,7 +20,9 @@ const SEED = [
 ]
 
 export function ActivityProvider({ children }) {
+  const { user } = useAuth()
   const [log, setLog] = useState(LIVE ? [] : SEED)
+  const prevUserId = useRef(user?.id ?? null)
 
   // Load the real, server-side log on the live site.
   const refresh = useCallback(async () => {
@@ -32,7 +35,26 @@ export function ActivityProvider({ children }) {
     }
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  // Refresh on mount (restored session) and whenever the signed-in user changes.
+  // When the change is a fresh login (was logged out → now in), show the sign-in
+  // instantly, then re-fetch after a beat so login()'s server-side write has
+  // landed (avoids racing the POST).
+  useEffect(() => {
+    const id = user?.id ?? null
+    const wasLoggedOut = prevUserId.current === null
+    prevUserId.current = id
+    if (!id) return
+    if (wasLoggedOut) {
+      setLog(prev => [{
+        id: Date.now(), user: user.name, role: user.role,
+        action: 'Signed in', detail: '', timestamp: new Date(),
+      }, ...prev].slice(0, 500))
+      const t = setTimeout(refresh, 1500)
+      return () => clearTimeout(t)
+    }
+    refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   // Record an action: shows immediately (optimistic) and persists to the server.
   const addLog = (user, action, detail = '') => {

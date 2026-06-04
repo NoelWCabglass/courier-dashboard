@@ -76,6 +76,8 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                 onMarkRead={notifications.markRead}
                 onMarkAllRead={notifications.markAllRead}
                 onSelect={notifications.onSelect}
+                onSendTest={notifications.sendTest}
+                canTest={can('canAdmin')}
               />
             )}
 

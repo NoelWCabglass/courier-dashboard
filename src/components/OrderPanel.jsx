@@ -309,6 +309,17 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                 </div>
               </section>
 
+              {/* Invoice */}
+              {order.invoiceUrl && (
+                <section>
+                  <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Invoice</h3>
+                  <a href={order.invoiceUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:underline bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl px-4 py-3">
+                    <ExternalLink size={14} /> Open Invoice{order.invoiceNo ? ` ${order.invoiceNo}` : ''}
+                  </a>
+                </section>
+              )}
+
               {/* Quotes */}
               <section>
                 <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Quotes</h3>

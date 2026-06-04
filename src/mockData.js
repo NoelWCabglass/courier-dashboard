@@ -1,6 +1,7 @@
 export const STATUS = {
   READY_FOR_QUOTE: 'Ready For Quote',
   QUOTED: 'Quoted',
+  INVOICED: 'Invoiced',
   BOOKING: 'Booking',
   BOOKED: 'Booked',
   BOOKING_FAILED: 'Booking Failed',
@@ -15,8 +16,9 @@ export const mockOrders = [
   {
     id: id(), rowIndex: 2,
     dateReceived: '2026-05-29T09:15:00',
-    status: STATUS.QUOTED,
+    status: STATUS.INVOICED,
     psNo: '2-24528', psUrl: '#',
+    invoiceUrl: 'https://drive.google.com/file/d/EXAMPLE/view', invoiceNo: '11-81188',
     customer: { company: 'My Glass Mosselbay', contact: 'Micaela', phone: '075 044 6859', email: 'micaelav@myglass.co.za' },
     address: { street: '17 Via Appie Street', suburb: 'Voorbaai', city: 'Mossel Bay', province: 'Western Cape', postalCode: '6500' },
     items: [

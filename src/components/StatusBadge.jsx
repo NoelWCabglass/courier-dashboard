@@ -3,6 +3,7 @@ import { STATUS } from '../mockData'
 const config = {
   [STATUS.READY_FOR_QUOTE]: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500', border: 'border-blue-200' },
   [STATUS.QUOTED]:          { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500', border: 'border-violet-200' },
+  [STATUS.INVOICED]:        { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500', border: 'border-teal-200' },
   [STATUS.BOOKING]:         { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', border: 'border-amber-200' },
   [STATUS.BOOKED]:          { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500', border: 'border-green-200' },
   [STATUS.BOOKING_FAILED]:  { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', border: 'border-red-200' },

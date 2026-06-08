@@ -83,12 +83,21 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
         {!order ? null : (<>
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <a href={order.psUrl} target="_blank" rel="noopener noreferrer"
-                className="text-lg font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5">
-                {order.psNo} <ExternalLink size={14} />
-              </a>
-              <StatusBadge status={order.status} size="lg" />
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-3">
+                <a href={order.psUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-lg font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5">
+                  {order.psNo} <ExternalLink size={14} />
+                </a>
+                <StatusBadge status={order.status} size="lg" />
+              </div>
+              {order.invoiceUrl && (
+                <a href={order.invoiceUrl.startsWith('http') ? order.invoiceUrl : `https://${order.invoiceUrl}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline">
+                  <ExternalLink size={12} /> Open Invoice{order.invoiceNo ? ` · ${order.invoiceNo}` : ''}
+                </a>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {canEdit && !terminal && (
@@ -309,16 +318,6 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                 </div>
               </section>
 
-              {/* Invoice */}
-              {order.invoiceUrl && (
-                <section>
-                  <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Invoice</h3>
-                  <a href={order.invoiceUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:underline bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl px-4 py-3">
-                    <ExternalLink size={14} /> Open Invoice{order.invoiceNo ? ` ${order.invoiceNo}` : ''}
-                  </a>
-                </section>
-              )}
 
               {/* Quotes */}
               <section>

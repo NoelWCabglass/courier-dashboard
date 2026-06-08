@@ -190,18 +190,20 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
   const [deletingId, setDeletingId] = useState(null)
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
     setUploading(true)
     setUploadError('')
     try {
-      const base64 = await new Promise((res, rej) => {
-        const reader = new FileReader()
-        reader.onload = () => res(reader.result.split(',')[1])
-        reader.onerror = rej
-        reader.readAsDataURL(file)
-      })
-      await whUpload(cat.id, file.name, base64, file.type, currentUser?.name || currentUser?.username || 'Unknown', uploadNote)
+      for (const file of files) {
+        const base64 = await new Promise((res, rej) => {
+          const reader = new FileReader()
+          reader.onload = () => res(reader.result.split(',')[1])
+          reader.onerror = rej
+          reader.readAsDataURL(file)
+        })
+        await whUpload(cat.id, file.name, base64, file.type, currentUser?.name || currentUser?.username || 'Unknown', uploadNote)
+      }
       setUploadNote('')
       onUploadDone()
     } catch (err) {
@@ -279,9 +281,9 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
             ${uploading ? 'opacity-50 cursor-not-allowed border-slate-200' : 'border-[#FECD28] hover:bg-[#FECD28]/5'}`}>
             <Upload size={16} className="text-[#FECD28]" />
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              {uploading ? 'Uploading…' : 'Choose file to upload'}
+              {uploading ? 'Uploading…' : 'Choose files to upload (select multiple)'}
             </span>
-            <input type="file" className="hidden" disabled={uploading} onChange={handleFileUpload} />
+            <input type="file" className="hidden" disabled={uploading} multiple onChange={handleFileUpload} />
           </label>
           {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
         </div>

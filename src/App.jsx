@@ -4,7 +4,7 @@ import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
 import { useNotifications } from './hooks/useNotifications'
-import { LIVE, fetchOrders, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked, setStaged as apiSetStaged } from './api'
+import { LIVE, fetchOrders, fetchWHData, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked, setStaged as apiSetStaged } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
 import Toasts from './components/Toasts'
@@ -18,6 +18,7 @@ import DispatchTab from './components/DispatchTab'
 import StagedTab from './components/StagedTab'
 import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
+import WHUploadsPage from './components/WHUploadsPage'
 
 function Dashboard() {
   const { user, can } = useAuth()
@@ -38,6 +39,7 @@ function Dashboard() {
   const [dateTo, setDateTo] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [toasts, setToasts] = useState([])
+  const [whData, setWHData] = useState({ categories: [], uploads: [] })
 
   // Toast helper — optional action = { label, onClick }, optional duration
   const notify = (message, type = 'success', action = null, duration = 4000) => {
@@ -93,7 +95,17 @@ function Dashboard() {
     }
   }
 
-  useEffect(() => { loadOrders() }, [])
+  const loadWHData = async () => {
+    if (!LIVE) return
+    try {
+      const data = await fetchWHData()
+      setWHData(data)
+    } catch (err) {
+      console.error('Failed to load WH data:', err)
+    }
+  }
+
+  useEffect(() => { loadOrders(); loadWHData() }, [])
 
   // Auto-poll every 60s to catch new orders and ping
   useEffect(() => {
@@ -339,6 +351,7 @@ function Dashboard() {
         ) : (
           <>
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
+            {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
             {activeTab === 'staged' && (
               <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} />
             )}

@@ -37,9 +37,10 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
   const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
 
   const flatTabs = [
-    { key: 'staged',   label: 'Staged',   show: true },
-    { key: 'dispatch', label: 'Dispatch', show: can('canDispatch') },
-    { key: 'admin',    label: 'Admin',    show: can('canAdmin') },
+    { key: 'staged',   label: 'Staged',     show: true },
+    { key: 'dispatch', label: 'Dispatch',   show: can('canDispatch') },
+    { key: 'wh',       label: 'WH Uploads', show: can('canView') },
+    { key: 'admin',    label: 'Admin',      show: can('canAdmin') },
   ].filter(t => t.show)
 
   const btnCls = (active) =>

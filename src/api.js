@@ -55,4 +55,17 @@ export const deleteOrder      = (psNo)               => post('deleteOrder', { ps
 export const markDispatched   = (psNo, dispatched)   => post('markDispatched', { psNo, dispatched })
 export const uploadPickingSlip = (fileName, fileData) => post('uploadPickingSlip', { fileName, fileData })
 
+// WH Uploads
+export async function fetchWHData() {
+  const url = `${API_URL}?action=getWHData&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load WH data')
+  return { categories: data.categories || [], uploads: data.uploads || [] }
+}
+export const saveWHCategory   = (category)                         => post('saveWHCategory', { category })
+export const deleteWHCategory = (categoryId)                       => post('deleteWHCategory', { categoryId })
+export const whUpload         = (categoryId, fileName, fileData, mimeType, uploadedBy, notes) =>
+  post('whUpload', { categoryId, fileName, fileData, mimeType, uploadedBy, notes })
+
 export { LIVE }

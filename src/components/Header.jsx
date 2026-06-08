@@ -49,7 +49,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     }`
 
   return (
-    <header style={{ backgroundColor: '#FECD28' }} className="sticky top-0 z-30 shadow-md">
+    <header style={{ backgroundColor: '#FECD28' }} className="sticky top-0 z-30 shadow-md overflow-visible">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
 
@@ -71,7 +71,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                 </button>
 
                 {ordersOpen && (
-                  <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 min-w-[130px] z-50">
+                  <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[130px] z-[100]">
                     <button
                       onClick={() => { setActiveTab('orders'); setOrdersOpen(false) }}
                       className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors

@@ -1,16 +1,29 @@
-import { useState, useEffect } from 'react'
-import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import NotificationBell from './NotificationBell'
 
 export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark, notifications }) {
   const { user, logout, can } = useAuth()
   const [isFs, setIsFs] = useState(false)
+  const [ordersOpen, setOrdersOpen] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     const onFs = () => setIsFs(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', onFs)
     return () => document.removeEventListener('fullscreenchange', onFs)
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOrdersOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [])
 
   const toggleFullscreen = () => {
@@ -21,14 +34,19 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     }
   }
 
-  const tabs = [
-    { key: 'orders',    label: 'Orders',    show: can('canView') },
-    { key: 'history',   label: 'History',   show: can('canView') },
-    { key: 'upload',    label: 'Upload',    show: can('canUpload') },
-    { key: 'staged',    label: 'Staged',    show: true },
-    { key: 'dispatch',  label: 'Dispatch',  show: can('canDispatch') },
-    { key: 'admin',     label: 'Admin',     show: can('canAdmin') },
+  const ordersActive = activeTab === 'orders' || activeTab === 'upload'
+
+  const flatTabs = [
+    { key: 'history',  label: 'History',  show: can('canView') },
+    { key: 'staged',   label: 'Staged',   show: true },
+    { key: 'dispatch', label: 'Dispatch', show: can('canDispatch') },
+    { key: 'admin',    label: 'Admin',    show: can('canAdmin') },
   ].filter(t => t.show)
+
+  const btnCls = (active) =>
+    `px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150 ${
+      active ? '' : 'text-black/50 hover:text-black hover:bg-black/10'
+    }`
 
   return (
     <header style={{ backgroundColor: '#FECD28' }} className="sticky top-0 z-30 shadow-md">
@@ -40,15 +58,52 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
           </div>
 
           <nav className="flex items-center gap-1 overflow-x-auto scrollbar-thin max-w-[50vw]">
-            {tabs.map(({ key, label }) => {
+
+            {/* Orders dropdown */}
+            {can('canView') && (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setOrdersOpen(o => !o)}
+                  style={ordersActive ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
+                  className={`flex items-center gap-1 ${btnCls(ordersActive)}`}
+                >
+                  Orders <ChevronDown size={13} className={`transition-transform duration-150 ${ordersOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {ordersOpen && (
+                  <div className="absolute left-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 min-w-[130px] z-50">
+                    <button
+                      onClick={() => { setActiveTab('orders'); setOrdersOpen(false) }}
+                      className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
+                        ${activeTab === 'orders'
+                          ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                      Orders
+                    </button>
+                    {can('canUpload') && (
+                      <button
+                        onClick={() => { setActiveTab('upload'); setOrdersOpen(false) }}
+                        className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
+                          ${activeTab === 'upload'
+                            ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                        Upload
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Flat tabs */}
+            {flatTabs.map(({ key, label }) => {
               const active = activeTab === key
               return (
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
                   style={active ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
-                  className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150
-                    ${!active ? 'text-black/50 hover:text-black hover:bg-black/10' : ''}`}
+                  className={btnCls(active)}
                 >
                   {label}
                 </button>

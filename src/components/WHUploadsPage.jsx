@@ -188,14 +188,32 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
   const [uploadNote, setUploadNote] = useState('')
   const [uploadError, setUploadError] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [queue, setQueue] = useState([]) // { file, previewUrl }
 
-  const handleFileUpload = async (e) => {
-    const fileList = Array.from(e.target.files || [])
-    if (!fileList.length) return
+  const addToQueue = (e) => {
+    const picked = Array.from(e.target.files || [])
+    if (!picked.length) return
+    const newItems = picked.map(file => ({
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }))
+    setQueue(q => [...q, ...newItems])
+    e.target.value = ''
+  }
+
+  const removeFromQueue = (idx) => {
+    setQueue(q => {
+      if (q[idx]?.previewUrl) URL.revokeObjectURL(q[idx].previewUrl)
+      return q.filter((_, i) => i !== idx)
+    })
+  }
+
+  const submitQueue = async () => {
+    if (!queue.length) return
     setUploading(true)
     setUploadError('')
     try {
-      const filesPayload = await Promise.all(fileList.map(async file => {
+      const filesPayload = await Promise.all(queue.map(async ({ file }) => {
         const fileData = await new Promise((res, rej) => {
           const reader = new FileReader()
           reader.onload = () => res(reader.result.split(',')[1])
@@ -206,12 +224,12 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
       }))
       await whUpload(cat.id, filesPayload, currentUser?.name || currentUser?.username || 'Unknown', uploadNote)
       setUploadNote('')
+      setQueue([])
       onUploadDone()
     } catch (err) {
       setUploadError(err.message || 'Upload failed')
     } finally {
       setUploading(false)
-      e.target.value = ''
     }
   }
 
@@ -277,23 +295,50 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
 
       {/* Upload section */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Upload New File</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">New Submission</h3>
         <div className="space-y-3">
           <input
             type="text"
             value={uploadNote}
             onChange={e => setUploadNote(e.target.value)}
-            placeholder="Optional note (e.g. March inspection, unit 3)"
+            placeholder="Optional note (e.g. June inspection, unit 3)"
             className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-[#FECD28] focus:ring-1 focus:ring-[#FECD28]/30"
           />
+
+          {/* Queue preview */}
+          {queue.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {queue.map((item, idx) => (
+                <div key={idx} className="relative flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-700 dark:text-slate-200 max-w-[160px]">
+                  {item.previewUrl
+                    ? <img src={item.previewUrl} className="w-6 h-6 rounded object-cover shrink-0" alt="" />
+                    : <FileText size={14} className="shrink-0 text-slate-400" />}
+                  <span className="truncate">{item.file.name}</span>
+                  <button onClick={() => removeFromQueue(idx)} className="shrink-0 ml-1 text-slate-400 hover:text-red-500"><X size={12} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add files button */}
           <label className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors
             ${uploading ? 'opacity-50 cursor-not-allowed border-slate-200' : 'border-[#FECD28] hover:bg-[#FECD28]/5'}`}>
             <Upload size={16} className="text-[#FECD28]" />
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              {uploading ? 'Uploading…' : 'Choose files to upload (select multiple)'}
+              {queue.length > 0 ? `Add more files (${queue.length} queued)` : 'Add files or photos'}
             </span>
-            <input type="file" className="hidden" disabled={uploading} multiple onChange={handleFileUpload} />
+            <input type="file" className="hidden" disabled={uploading} multiple onChange={addToQueue} />
           </label>
+
+          {/* Submit button — only shows when files are queued */}
+          {queue.length > 0 && (
+            <button onClick={submitQueue} disabled={uploading}
+              style={{ backgroundColor: '#FECD28' }}
+              className="w-full py-2.5 rounded-xl text-sm font-bold text-[#111111] disabled:opacity-50">
+              {uploading ? 'Uploading…' : `Submit ${queue.length} file${queue.length !== 1 ? 's' : ''} as one submission`}
+            </button>
+          )}
+
           {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
         </div>
       </div>

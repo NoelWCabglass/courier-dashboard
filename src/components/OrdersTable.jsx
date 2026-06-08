@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2 } from 'lucide-react'
+import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2, CheckCircle2, Circle } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import OrderCard from './OrderCard'
@@ -102,7 +102,7 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                     className="accent-[#FECD28] w-4 h-4 cursor-pointer" title="Select all" />
                 </th>
               )}
-              {['PS No', 'Customer', 'Destination', 'TCG', 'EPX', 'Courier', 'Approved', 'Buy Label', 'Status', ''].map(h => (
+              {['PS No', 'Customer', 'Destination', 'TCG', 'EPX', 'Courier', 'Approved', 'Buy Label', 'Picked', 'Labelled', 'Status', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -186,6 +186,18 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
 
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <Toggle checked={order.buyLabel} onChange={v => canEdit && onUpdate(order.id, { buyLabel: v })} disabled={!canEdit || terminal || !order.approved} />
+                  </td>
+
+                  <td className="px-4 py-3 text-center">
+                    {order.staged
+                      ? <CheckCircle2 size={16} className="text-green-500 mx-auto" />
+                      : <Circle size={16} className="text-slate-300 dark:text-slate-600 mx-auto" />}
+                  </td>
+
+                  <td className="px-4 py-3 text-center">
+                    {order.packed
+                      ? <CheckCircle2 size={16} className="text-green-500 mx-auto" />
+                      : <Circle size={16} className="text-slate-300 dark:text-slate-600 mx-auto" />}
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">

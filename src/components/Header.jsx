@@ -34,10 +34,9 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     }
   }
 
-  const ordersActive = activeTab === 'orders' || activeTab === 'upload'
+  const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
 
   const flatTabs = [
-    { key: 'history',  label: 'History',  show: can('canView') },
     { key: 'staged',   label: 'Staged',   show: true },
     { key: 'dispatch', label: 'Dispatch', show: can('canDispatch') },
     { key: 'admin',    label: 'Admin',    show: can('canAdmin') },
@@ -88,6 +87,16 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                             ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
                             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
                         Upload
+                      </button>
+                    )}
+                    {can('canView') && (
+                      <button
+                        onClick={() => { setActiveTab('history'); setOrdersOpen(false) }}
+                        className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
+                          ${activeTab === 'history'
+                            ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                        History
                       </button>
                     )}
                   </div>

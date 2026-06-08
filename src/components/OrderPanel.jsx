@@ -94,8 +94,8 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
               {order.invoiceUrl && (
                 <a href={order.invoiceUrl.startsWith('http') ? order.invoiceUrl : `https://${order.invoiceUrl}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline">
-                  <ExternalLink size={12} /> Open Invoice{order.invoiceNo ? ` · ${order.invoiceNo}` : ''}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+                  <ExternalLink size={13} /> Invoice {order.invoiceNo || ''}
                 </a>
               )}
             </div>

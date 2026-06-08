@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { CheckCircle2, AlertCircle, Clock, Upload, Settings, Plus, ArrowLeft, Trash2, X, ExternalLink, FileText } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { saveWHCategory, deleteWHCategory, whUpload } from '../api'
+import { saveWHCategory, deleteWHCategory, whUpload, deleteWHUpload } from '../api'
 
 // ── Due-date helpers ──────────────────────────────────────────────────────────
 
@@ -187,6 +187,7 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
   const [uploading, setUploading] = useState(false)
   const [uploadNote, setUploadNote] = useState('')
   const [uploadError, setUploadError] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
@@ -305,12 +306,26 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
                     <p className="text-xs text-slate-400 mt-0.5">{fmtDate(u.uploadedAt)} · {u.uploadedBy}</p>
                   </div>
                 </div>
-                {u.driveLink && (
-                  <a href={u.driveLink} target="_blank" rel="noopener noreferrer"
-                    className="shrink-0 ml-3 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                    <ExternalLink size={12} /> View
-                  </a>
-                )}
+                <div className="shrink-0 ml-3 flex items-center gap-2">
+                  {u.driveLink && (
+                    <a href={u.driveLink} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                      <ExternalLink size={12} /> View
+                    </a>
+                  )}
+                  {deletingId === u.id ? (
+                    <div className="flex items-center gap-1">
+                      <button onClick={async () => { await deleteWHUpload(u.id); setDeletingId(null); onUploadDone() }}
+                        className="text-xs text-red-600 font-semibold hover:underline">Confirm</button>
+                      <button onClick={() => setDeletingId(null)} className="text-xs text-slate-400 hover:underline">Cancel</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeletingId(u.id)}
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

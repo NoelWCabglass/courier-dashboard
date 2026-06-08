@@ -67,5 +67,6 @@ export const saveWHCategory   = (category)                         => post('save
 export const deleteWHCategory = (categoryId)                       => post('deleteWHCategory', { categoryId })
 export const whUpload         = (categoryId, fileName, fileData, mimeType, uploadedBy, notes) =>
   post('whUpload', { categoryId, fileName, fileData, mimeType, uploadedBy, notes })
+export const deleteWHUpload   = (uploadId) => post('deleteWHUpload', { uploadId })
 
 export { LIVE }

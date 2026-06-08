@@ -14,6 +14,7 @@ const COURIER_COLORS = {
   TCG:      'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800',
   EPX:      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
   Triangle: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
+  Other:    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
 }
 
 export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onMoveToHistory, onBulkDelete }) {
@@ -176,6 +177,7 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                         <option value="TCG">TCG</option>
                         <option value="EPX">EPX</option>
                         <option value="Triangle">Triangle</option>
+                        <option value="Other">Other</option>
                       </select>
                     )}
                   </td>

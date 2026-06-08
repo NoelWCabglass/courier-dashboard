@@ -129,9 +129,9 @@ function Dashboard() {
       // History: most recent at the top
       return rows.sort(newestFirst)
     }
-    // Orders: booked sink to the bottom; within each group, newest first
-    const done = (o) => o.status === STATUS.BOOKED ? 1 : 0
-    return rows.sort((a, b) => done(a) - done(b) || newestFirst(a, b))
+    // Orders: Invoiced float to top, booked sink to bottom; within each group, newest first
+    const rank = (o) => o.status === STATUS.INVOICED ? 0 : o.status === STATUS.BOOKED ? 2 : 1
+    return rows.sort((a, b) => rank(a) - rank(b) || newestFirst(a, b))
   }, [source, activeFilter, courierFilter, search, dateFrom, dateTo, activeTab])
 
   const selectedOrder = [...orders, ...history].find(o => o.id === selectedId) || null

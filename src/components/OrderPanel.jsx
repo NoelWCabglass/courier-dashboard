@@ -12,6 +12,7 @@ const COURIER_COLORS = {
   TCG: 'border-cyan-300 bg-cyan-50 text-cyan-800',
   EPX: 'border-orange-300 bg-orange-50 text-orange-800',
   Triangle: 'border-yellow-300 bg-yellow-50 text-yellow-800',
+  Other:    'border-purple-300 bg-purple-50 text-purple-800',
 }
 
 const inputCls = "w-full text-sm px-2.5 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30"
@@ -362,6 +363,7 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                         <option value="TCG">TCG</option>
                         <option value="EPX">EPX</option>
                         <option value="Triangle">Triangle</option>
+                        <option value="Other">Other</option>
                       </select>
                     </div>
                     <hr className="border-slate-100 dark:border-slate-700" />

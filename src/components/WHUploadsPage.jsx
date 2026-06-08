@@ -404,24 +404,6 @@ export default function WHUploadsPage({ whData, onRefresh }) {
         )}
       </div>
 
-      {/* Alerts banner */}
-      {myAlerts.length > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-          <p className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">
-            {myAlerts.filter(a => a.status === 'overdue').length > 0 ? '⚠️ Action required' : '⏰ Due soon'}
-          </p>
-          <ul className="text-sm text-red-600 dark:text-red-400 space-y-0.5">
-            {myAlerts.map(a => (
-              <li key={a.cat.id} className="flex items-center gap-2">
-                <button onClick={() => setSelectedCat(a.cat)} className="hover:underline font-medium">{a.cat.name}</button>
-                {a.status === 'overdue'
-                  ? <span className="text-xs">— overdue by {Math.abs(a.daysUntilDue)} day{Math.abs(a.daysUntilDue) !== 1 ? 's' : ''}</span>
-                  : <span className="text-xs">— due in {a.daysUntilDue} day{a.daysUntilDue !== 1 ? 's' : ''}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* Category cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -190,20 +190,21 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
   const [deletingId, setDeletingId] = useState(null)
 
   const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files || [])
-    if (!files.length) return
+    const fileList = Array.from(e.target.files || [])
+    if (!fileList.length) return
     setUploading(true)
     setUploadError('')
     try {
-      for (const file of files) {
-        const base64 = await new Promise((res, rej) => {
+      const filesPayload = await Promise.all(fileList.map(async file => {
+        const fileData = await new Promise((res, rej) => {
           const reader = new FileReader()
           reader.onload = () => res(reader.result.split(',')[1])
           reader.onerror = rej
           reader.readAsDataURL(file)
         })
-        await whUpload(cat.id, file.name, base64, file.type, currentUser?.name || currentUser?.username || 'Unknown', uploadNote)
-      }
+        return { fileName: file.name, fileData, mimeType: file.type }
+      }))
+      await whUpload(cat.id, filesPayload, currentUser?.name || currentUser?.username || 'Unknown', uploadNote)
       setUploadNote('')
       onUploadDone()
     } catch (err) {
@@ -228,7 +229,15 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
           <div className="flex items-center gap-3">
             {st.icon}
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{cat.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{cat.name}</h2>
+                {cat.driveFolderId && (
+                  <a href={`https://drive.google.com/drive/folders/${cat.driveFolderId}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                    <ExternalLink size={12} /> Drive Folder
+                  </a>
+                )}
+              </div>
               <span className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-semibold ${st.badge}`}>{st.label}</span>
             </div>
           </div>
@@ -298,38 +307,42 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
           <div className="p-8 text-center text-sm text-slate-400">No uploads yet</div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
-            {catUploads.map(u => (
-              <div key={u.id} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText size={15} className="text-slate-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{u.fileName || '(no file)'}</p>
-                    {u.notes && <p className="text-xs text-slate-400 mt-0.5">{u.notes}</p>}
-                    <p className="text-xs text-slate-400 mt-0.5">{fmtDate(u.uploadedAt)} · {u.uploadedBy}</p>
+            {catUploads.map(u => {
+              const fileList = u.files?.length > 0 ? u.files : (u.driveLink ? [{ fileName: u.fileName, driveLink: u.driveLink }] : [])
+              return (
+                <div key={u.id} className="px-5 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-slate-400">{fmtDate(u.uploadedAt)} · {u.uploadedBy}</p>
+                      {u.notes && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 italic">{u.notes}</p>}
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {fileList.map((f, i) => (
+                          <a key={i} href={f.driveLink} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg">
+                            <FileText size={11} /> {f.fileName || `File ${i + 1}`}
+                          </a>
+                        ))}
+                        {fileList.length === 0 && <span className="text-xs text-slate-400">(no files)</span>}
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center pt-1">
+                      {deletingId === u.id ? (
+                        <div className="flex items-center gap-1">
+                          <button onClick={async () => { await deleteWHUpload(u.id); setDeletingId(null); onUploadDone() }}
+                            className="text-xs text-red-600 font-semibold hover:underline">Confirm</button>
+                          <button onClick={() => setDeletingId(null)} className="text-xs text-slate-400 hover:underline">Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeletingId(u.id)}
+                          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="shrink-0 ml-3 flex items-center gap-2">
-                  {u.driveLink && (
-                    <a href={u.driveLink} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                      <ExternalLink size={12} /> View
-                    </a>
-                  )}
-                  {deletingId === u.id ? (
-                    <div className="flex items-center gap-1">
-                      <button onClick={async () => { await deleteWHUpload(u.id); setDeletingId(null); onUploadDone() }}
-                        className="text-xs text-red-600 font-semibold hover:underline">Confirm</button>
-                      <button onClick={() => setDeletingId(null)} className="text-xs text-slate-400 hover:underline">Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setDeletingId(u.id)}
-                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-500 transition-colors">
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

@@ -368,7 +368,7 @@ function Dashboard() {
                   dateTo={dateTo} setDateTo={setDateTo} />
                 <OrdersTable orders={filtered} selectedId={selectedId}
                   onSelect={(id) => setSelectedId(prev => prev === id ? null : id)}
-                  onUpdate={updateOrder}
+                  onUpdate={updateOrder} inHistory={activeTab === 'history'}
                   onMoveToHistory={moveToHistory} onBulkDelete={bulkDelete} />
               </>
             )}

@@ -17,7 +17,7 @@ const COURIER_COLORS = {
   Other:    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
 }
 
-export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onMoveToHistory, onBulkDelete }) {
+export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, onMoveToHistory, onBulkDelete, inHistory = false }) {
   const { can } = useAuth()
   const canEdit = can('canEdit')
   // terminal = can't edit fields (booked / mid-booking / failed)
@@ -103,7 +103,7 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                     className="accent-[#FECD28] w-4 h-4 cursor-pointer" title="Select all" />
                 </th>
               )}
-              {['PS No', 'Customer', 'Destination', 'TCG', 'EPX', 'Courier', 'Approved', 'Buy Label', 'Picked', 'Labelled', 'Status', ''].map(h => (
+              {['PS No', 'Customer', 'Destination', 'TCG', 'EPX', 'Courier', 'Approved', 'Buy Label', ...(!inHistory ? ['Picked', 'Labelled'] : []), 'Status', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -190,17 +190,21 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                     <Toggle checked={order.buyLabel} onChange={v => canEdit && onUpdate(order.id, { buyLabel: v })} disabled={!canEdit || terminal || !order.approved} />
                   </td>
 
-                  <td className="px-4 py-3 text-center">
-                    {order.staged
-                      ? <CheckCircle2 size={16} className="text-green-500 mx-auto" />
-                      : <Circle size={16} className="text-slate-300 dark:text-slate-600 mx-auto" />}
-                  </td>
+                  {!inHistory && (
+                    <td className="px-4 py-3 text-center">
+                      {order.staged
+                        ? <CheckCircle2 size={16} className="text-green-500 mx-auto" />
+                        : <Circle size={16} className="text-slate-300 dark:text-slate-600 mx-auto" />}
+                    </td>
+                  )}
 
-                  <td className="px-4 py-3 text-center">
-                    {order.packed
-                      ? <CheckCircle2 size={16} className="text-green-500 mx-auto" />
-                      : <Circle size={16} className="text-slate-300 dark:text-slate-600 mx-auto" />}
-                  </td>
+                  {!inHistory && (
+                    <td className="px-4 py-3 text-center">
+                      {order.packed
+                        ? <CheckCircle2 size={16} className="text-green-500 mx-auto" />
+                        : <Circle size={16} className="text-slate-300 dark:text-slate-600 mx-auto" />}
+                    </td>
+                  )}
 
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2">

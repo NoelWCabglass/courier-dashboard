@@ -57,7 +57,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
             <img src="/Cabglass_logo_PNG.avif" alt="CabGlass" className="h-8 w-auto" style={{ filter: 'brightness(0)' }} />
           </div>
 
-          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-thin max-w-[50vw]">
+          <nav className="flex items-center gap-1">
 
             {/* Orders dropdown */}
             {can('canView') && (

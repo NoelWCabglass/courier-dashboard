@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import NotificationBell from './NotificationBell'
 
 export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark, notifications }) {
-  const { user, logout, can } = useAuth()
+  const { user, logout, perm } = useAuth()
   const [isFs, setIsFs] = useState(false)
   const [ordersOpen, setOrdersOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -37,11 +37,11 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
   const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
 
   const flatTabs = [
-    { key: 'staged',   label: 'Staged',     show: true },
-    { key: 'dispatch', label: 'Dispatch',   show: can('canDispatch') },
-    { key: 'wh',       label: 'WH Uploads', show: can('canView') },
-    { key: 'pricing',  label: 'Pricing',    show: can('canView') },
-    { key: 'admin',    label: 'Admin',      show: can('canAdmin') },
+    { key: 'staged',   label: 'Staged',     show: perm('staged', 'view') },
+    { key: 'dispatch', label: 'Dispatch',   show: perm('dispatch', 'view') },
+    { key: 'wh',       label: 'WH Uploads', show: perm('wh', 'view') },
+    { key: 'pricing',  label: 'Pricing',    show: perm('pricing', 'view') },
+    { key: 'admin',    label: 'Admin',      show: perm('admin', 'view') },
   ].filter(t => t.show)
 
   const btnCls = (active) =>
@@ -61,7 +61,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
           <nav className="flex items-center gap-1">
 
             {/* Orders dropdown */}
-            {can('canView') && (
+            {(perm('orders', 'view') || perm('upload', 'view')) && (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setOrdersOpen(o => !o)}
@@ -73,15 +73,17 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
 
                 {ordersOpen && (
                   <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[130px] z-[100]">
-                    <button
-                      onClick={() => { setActiveTab('orders'); setOrdersOpen(false) }}
-                      className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
-                        ${activeTab === 'orders'
-                          ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
-                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                      Orders
-                    </button>
-                    {can('canUpload') && (
+                    {perm('orders', 'view') && (
+                      <button
+                        onClick={() => { setActiveTab('orders'); setOrdersOpen(false) }}
+                        className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
+                          ${activeTab === 'orders'
+                            ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                        Orders
+                      </button>
+                    )}
+                    {perm('upload', 'view') && (
                       <button
                         onClick={() => { setActiveTab('upload'); setOrdersOpen(false) }}
                         className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
@@ -91,7 +93,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                         Upload
                       </button>
                     )}
-                    {can('canView') && (
+                    {perm('orders', 'view') && (
                       <button
                         onClick={() => { setActiveTab('history'); setOrdersOpen(false) }}
                         className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
@@ -143,7 +145,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                 onMarkAllRead={notifications.markAllRead}
                 onSelect={notifications.onSelect}
                 onSendTest={notifications.sendTest}
-                canTest={can('canAdmin')}
+                canTest={perm('admin', 'view')}
               />
             )}
 

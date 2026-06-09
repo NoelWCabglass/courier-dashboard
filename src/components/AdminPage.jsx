@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, Check, Eye, EyeOff, Shield, ShieldCheck, User, Clock, BarChart2, Users, Truck } from 'lucide-react'
-import { useAuth, ROLES } from '../context/AuthContext'
+import { Plus, Pencil, Trash2, Check, Eye, EyeOff, Pencil as PencilIcon, Shield, ShieldCheck, User, Clock, BarChart2, Users, Truck } from 'lucide-react'
+import { useAuth, ROLES, PAGES, defaultPermsForRole } from '../context/AuthContext'
 import { useActivity } from '../context/ActivityContext'
 import AnalyticsTab from './AnalyticsTab'
 
@@ -24,11 +24,30 @@ const ROLE_BADGES = {
 const ROLE_ICONS = { admin: ShieldCheck, general: Shield, sales: User, dispatch: Truck }
 
 function UserForm({ initial, onSave, onCancel, isNew }) {
-  const [form, setForm] = useState(initial || { name: '', username: '', password: '', role: 'sales' })
+  const [form, setForm] = useState(() => {
+    const base = initial || { name: '', username: '', password: '', role: 'sales' }
+    return { ...base, permissions: base.permissions || defaultPermsForRole(base.role) }
+  })
   const [showPw, setShowPw] = useState(false)
   const [errors, setErrors] = useState({})
 
   const set = (field, val) => { setForm(p => ({ ...p, [field]: val })); setErrors(p => ({ ...p, [field]: '' })) }
+
+  // Apply a role preset → fills the whole permission matrix
+  const applyPreset = (role) => {
+    setForm(p => ({ ...p, role, permissions: defaultPermsForRole(role) }))
+  }
+
+  // Toggle one page's view/edit cell. Turning off View also turns off Edit.
+  const togglePerm = (pageKey, action) => {
+    setForm(p => {
+      const cur = p.permissions[pageKey] || { view: false, edit: false }
+      let next = { ...cur, [action]: !cur[action] }
+      if (action === 'view' && !next.view) next.edit = false
+      if (action === 'edit' && next.edit) next.view = true
+      return { ...p, permissions: { ...p.permissions, [pageKey]: next } }
+    })
+  }
 
   const validate = () => {
     const e = {}
@@ -83,32 +102,63 @@ function UserForm({ initial, onSave, onCancel, isNew }) {
           {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Role</label>
-          <select value={form.role} onChange={e => set('role', e.target.value)}
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">Quick preset</label>
+          <select value={form.role} onChange={e => applyPreset(e.target.value)}
             className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand">
-            <option value="admin">Admin</option>
-            <option value="general">General</option>
-            <option value="sales">Sales</option>
-            <option value="dispatch">Dispatch</option>
+            <option value="admin">Admin (full access)</option>
+            <option value="general">General (no user mgmt)</option>
+            <option value="sales">Sales (view only)</option>
+            <option value="dispatch">Dispatch (warehouse)</option>
           </select>
+          <p className="text-[11px] text-slate-400 mt-1">Fills the grid below — fine-tune after.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-xs">
-        {Object.entries(ROLES).map(([key, r]) => {
-          const Icon = ROLE_ICONS[key]
-          return (
-            <div key={key} className={`rounded-lg border p-2.5 ${form.role === key ? 'ring-2 ring-brand' : ''} ${ROLE_BADGES[key]}`}>
-              <div className="flex items-center gap-1.5 font-semibold mb-1"><Icon size={11} /> {r.label}</div>
-              <p className="opacity-75 leading-tight">
-                {key === 'admin' && 'Full access + user management'}
-                {key === 'general' && 'Full access, no user management'}
-                {key === 'sales' && 'View & upload only'}
-                {key === 'dispatch' && 'Dispatch tab only'}
-              </p>
-            </div>
-          )
-        })}
+      {/* Permission matrix */}
+      <div className="mb-4">
+        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Page permissions</label>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/40 text-[11px] uppercase tracking-wide text-slate-400">
+                <th className="text-left font-semibold px-3 py-2">Page</th>
+                <th className="text-center font-semibold px-3 py-2 w-20">View</th>
+                <th className="text-center font-semibold px-3 py-2 w-20">Edit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PAGES.map(pg => {
+                const cell = form.permissions[pg.key] || { view: false, edit: false }
+                return (
+                  <tr key={pg.key} className="border-t border-slate-100 dark:border-slate-700">
+                    <td className="px-3 py-2">
+                      <span className="font-medium text-slate-700 dark:text-slate-200">{pg.label}</span>
+                      {pg.hasEdit && pg.editHint && <span className="block text-[11px] text-slate-400">{pg.editHint}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <button type="button" onClick={() => togglePerm(pg.key, 'view')}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors
+                          ${cell.view ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700' : 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600 border-slate-200 dark:border-slate-700'}`}>
+                        {cell.view ? <Check size={15} /> : <Eye size={14} />}
+                      </button>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {pg.hasEdit ? (
+                        <button type="button" onClick={() => togglePerm(pg.key, 'edit')}
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors
+                            ${cell.edit ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700' : 'bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600 border-slate-200 dark:border-slate-700'}`}>
+                          {cell.edit ? <Check size={15} /> : <PencilIcon size={13} />}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-300 dark:text-slate-600">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="flex gap-2">

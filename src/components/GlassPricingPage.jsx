@@ -33,8 +33,8 @@ const fmt = (n) => Number(n).toLocaleString('en-ZA', { maximumFractionDigits: 0 
 const r = (n, d = 2) => +Number(n).toFixed(d)
 
 export default function GlassPricingPage() {
-  const { can } = useAuth()
-  const canEdit = can('canAdmin')
+  const { perm } = useAuth()
+  const canEdit = perm('pricing', 'edit')
 
   const [pricing, setPricing] = useState(DEFAULT_PRICING)
   const [glassType, setGlassType] = useState('flat_tough')

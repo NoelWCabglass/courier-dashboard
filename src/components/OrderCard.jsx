@@ -14,8 +14,8 @@ const COURIER_COLORS = {
 }
 
 export default function OrderCard({ order, selected, onSelect, onUpdate }) {
-  const { can } = useAuth()
-  const canEdit = can('canEdit')
+  const { perm } = useAuth()
+  const canEdit = perm('orders', 'edit')
   const terminal = [STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED].includes(order.status)
   const cheaper = order.tcgQuote != null && order.epxQuote != null
     ? (order.tcgQuote <= order.epxQuote ? 'TCG' : 'EPX') : null

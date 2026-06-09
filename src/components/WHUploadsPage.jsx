@@ -398,8 +398,8 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
 // ── Main WH Uploads Page ──────────────────────────────────────────────────────
 
 export default function WHUploadsPage({ whData, onRefresh }) {
-  const { can, user, users } = useAuth()
-  const canAdmin = can('canAdmin')
+  const { perm, user, users } = useAuth()
+  const canAdmin = perm('wh', 'edit')
 
   const { categories = [], uploads = [] } = whData || {}
 

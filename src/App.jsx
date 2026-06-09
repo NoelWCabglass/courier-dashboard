@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { mockOrders, mockHistory, STATUS } from './mockData'
-import { AuthProvider, useAuth, DEFAULT_TAB } from './context/AuthContext'
+import { AuthProvider, useAuth, landingTab } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
 import { useNotifications } from './hooks/useNotifications'
@@ -22,7 +22,7 @@ import WHUploadsPage from './components/WHUploadsPage'
 import GlassPricingPage from './components/GlassPricingPage'
 
 function Dashboard() {
-  const { user, can } = useAuth()
+  const { user, can, perm } = useAuth()
   const { addLog } = useActivity()
   const [dark, toggleDark] = useDarkMode()
   const [archiving, setArchiving] = useState(false)
@@ -32,7 +32,7 @@ function Dashboard() {
   const [stagedIds, setStagedIds] = useState(() => new Set())
   const [loading, setLoading] = useState(LIVE)
   const [selectedId, setSelectedId] = useState(null)
-  const [activeTab, setActiveTab] = useState(DEFAULT_TAB[user?.role] ?? 'orders')
+  const [activeTab, setActiveTab] = useState(landingTab(user))
   const [activeFilter, setActiveFilter] = useState('all')
   const [courierFilter, setCourierFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -367,7 +367,7 @@ function Dashboard() {
             {(activeTab === 'orders' || activeTab === 'history') && (
               <>
                 {activeTab === 'orders' && <StatsBar orders={orders} />}
-                {activeTab === 'orders' && can('canEdit') && (
+                {activeTab === 'orders' && perm('orders', 'edit') && (
                   <div className="flex justify-end mb-3">
                     <button onClick={handleArchive} disabled={archiving}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors disabled:opacity-50">

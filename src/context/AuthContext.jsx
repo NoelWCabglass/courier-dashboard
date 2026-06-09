@@ -10,23 +10,56 @@ const INITIAL_USERS = [
   { id: 4, name: 'Dispatch',   username: 'dispatch', password: 'dispatch123', role: 'dispatch' },
 ]
 
-// Role capabilities
-//   canView     — see Orders / History tabs
-//   canUpload   — see Upload tab
-//   canEdit     — edit order details, courier, approve/buy
-//   canBook     — book shipments
-//   canDispatch — see Dispatch tab and mark items dispatched
-//   canAdmin    — see Admin tab (users, analytics, activity)
+// ── Per-page permission model ──
+// Each user has a `permissions` object: { [pageKey]: { view, edit } }.
+// PAGES drives both the Admin permission matrix and the nav gating.
+export const PAGES = [
+  { key: 'orders',   label: 'Orders & History', hasEdit: true,  editHint: 'Edit details, courier, approve & book' },
+  { key: 'upload',   label: 'Upload',           hasEdit: false },
+  { key: 'staged',   label: 'Staged',           hasEdit: true,  editHint: 'Mark items picked' },
+  { key: 'dispatch', label: 'Dispatch',         hasEdit: true,  editHint: 'Label & mark dispatched' },
+  { key: 'wh',       label: 'WH Uploads',       hasEdit: true,  editHint: 'Manage categories & settings' },
+  { key: 'pricing',  label: 'Pricing',          hasEdit: true,  editHint: 'Edit markup tiers' },
+  { key: 'admin',    label: 'Admin',            hasEdit: false },
+]
+
+// Roles remain as quick-fill PRESETS that populate the permission matrix.
+// The per-user `permissions` object is the source of truth once set.
 export const ROLES = {
-  admin:    { label: 'Admin',    canView: true,  canUpload: true,  canEdit: true,  canBook: true,  canDispatch: true,  canAdmin: true  },
-  general:  { label: 'General',  canView: true,  canUpload: true,  canEdit: true,  canBook: true,  canDispatch: true,  canAdmin: false },
-  sales:    { label: 'Sales',    canView: true,  canUpload: true,  canEdit: false, canBook: false, canDispatch: true,  canAdmin: false },
-  dispatch: { label: 'Dispatch', canView: false, canUpload: false, canEdit: false, canBook: false, canDispatch: true,  canAdmin: false },
+  admin:    { label: 'Admin' },
+  general:  { label: 'General' },
+  sales:    { label: 'Sales' },
+  dispatch: { label: 'Dispatch' },
 }
 
-// Where each role lands after logging in
-export const DEFAULT_TAB = {
-  admin: 'orders', general: 'orders', sales: 'orders', dispatch: 'dispatch',
+const P = (view, edit) => ({ view, edit })
+
+export function defaultPermsForRole(role) {
+  switch (role) {
+    case 'admin':
+      return { orders: P(1,1), upload: P(1,1), staged: P(1,1), dispatch: P(1,1), wh: P(1,1), pricing: P(1,1), admin: P(1,1) }
+    case 'general':
+      return { orders: P(1,1), upload: P(1,1), staged: P(1,1), dispatch: P(1,1), wh: P(1,1), pricing: P(1,1), admin: P(0,0) }
+    case 'sales':
+      return { orders: P(1,0), upload: P(1,0), staged: P(1,0), dispatch: P(1,0), wh: P(1,0), pricing: P(1,0), admin: P(0,0) }
+    case 'dispatch':
+      return { orders: P(0,0), upload: P(0,0), staged: P(1,1), dispatch: P(1,1), wh: P(0,0), pricing: P(0,0), admin: P(0,0) }
+    default:
+      return { orders: P(1,0), upload: P(0,0), staged: P(1,0), dispatch: P(0,0), wh: P(0,0), pricing: P(0,0), admin: P(0,0) }
+  }
+}
+
+// Resolve a user's effective permissions (explicit matrix, else derived from role).
+export function permissionsFor(u) {
+  if (u?.permissions && typeof u.permissions === 'object') return u.permissions
+  return defaultPermsForRole(u?.role)
+}
+
+// First page (in PAGES order) the user can view — used as their landing tab.
+export function landingTab(u) {
+  const perms = permissionsFor(u)
+  const first = PAGES.find(pg => perms?.[pg.key]?.view)
+  return first ? first.key : 'orders'
 }
 
 const SESSION_KEY = 'courier_session'
@@ -60,7 +93,7 @@ export function AuthProvider({ children }) {
   // Dispatch stays logged in indefinitely (warehouse tablet) — far-future expiry.
   const writeSession = (u) => {
     if (!u) { localStorage.removeItem(SESSION_KEY); return }
-    const safe = { id: u.id, name: u.name, username: u.username, role: u.role }
+    const safe = { id: u.id, name: u.name, username: u.username, role: u.role, permissions: u.permissions }
     const expiresAt = u.role === 'dispatch'
       ? Date.now() + 100 * 365 * 24 * 60 * 60 * 1000 // ~never
       : Date.now() + IDLE_MS
@@ -120,7 +153,12 @@ export function AuthProvider({ children }) {
 
   // User management — admin only
   const addUser = (data) => {
-    const newUser = { ...data, id: Date.now(), username: data.username.trim().toLowerCase() }
+    const newUser = {
+      ...data,
+      id: Date.now(),
+      username: data.username.trim().toLowerCase(),
+      permissions: data.permissions || defaultPermsForRole(data.role),
+    }
     persist([...users, newUser])
   }
 
@@ -137,10 +175,27 @@ export function AuthProvider({ children }) {
     persist(users.filter(u => u.id !== id))
   }
 
-  const can = (ability) => ROLES[user?.role]?.[ability] ?? false
+  // New per-page check: perm('orders','view') / perm('pricing','edit')
+  const perm = (pageKey, action = 'view') => {
+    const perms = permissionsFor(user)
+    return !!perms?.[pageKey]?.[action]
+  }
+
+  // Backward-compat shim — maps the old ability names onto the page model.
+  const ABILITY_MAP = {
+    canView: ['orders', 'view'],
+    canUpload: ['upload', 'view'],
+    canEdit: ['orders', 'edit'],
+    canDispatch: ['dispatch', 'view'],
+    canAdmin: ['admin', 'view'],
+  }
+  const can = (ability) => {
+    const m = ABILITY_MAP[ability]
+    return m ? perm(m[0], m[1]) : false
+  }
 
   return (
-    <AuthContext.Provider value={{ user, users, login, logout, addUser, updateUser, deleteUser, can }}>
+    <AuthContext.Provider value={{ user, users, login, logout, addUser, updateUser, deleteUser, can, perm }}>
       {children}
     </AuthContext.Provider>
   )

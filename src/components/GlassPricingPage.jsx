@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Calculator, Pencil, Check, X, RotateCcw } from 'lucide-react'
+import { Calculator, Pencil, Check, RotateCcw, Printer, FileText } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { fetchGlassPricing, saveGlassPricing, LIVE } from '../api'
 
@@ -27,10 +27,104 @@ const TYPE_COLORS = {
   curved_tough: 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
   laminated:    'bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700',
 }
+const GLASS_DENSITY = { flat_tough: 2500, curved_tough: 2500, laminated: 2600 } // kg/m³
 
-const fmtR = (n) => 'R ' + Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmtR = (n) => 'R ' + Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmt = (n) => Number(n).toLocaleString('en-ZA', { maximumFractionDigits: 0 })
 const r = (n, d = 2) => +Number(n).toFixed(d)
+
+// ── Core calculation (dimensions in cm; converts to mm internally) ──
+function computeAll({ glassType, shipType, lenCm, widCm, thkCm, glassWt, cost, rkg, rvol, tiers }) {
+  const Lc = +lenCm || 0, Wc = +widCm || 0, Tc = +thkCm || 0, c = +cost || 0
+  const Lmm = Lc * 10, Wmm = Wc * 10, Tmm = Tc * 10
+  const isLam = glassType === 'laminated'
+  const isZero = shipType === 'zero'
+  const legs = shipType === 'double' ? 2 : 1
+  const gw = +glassWt || 0
+
+  let pkgL, pkgW, pkgH, pkgWt, crate = null
+
+  if (isLam) {
+    const plyDensity_mm3 = 5.0926e-7, plyThk = 18, breadth = 150, slatW = 150, numSlats = 2, J1 = 40
+    const longL = Lmm + J1
+    const longKg = longL * breadth * plyThk * plyDensity_mm3 * 2
+    const shortKg = Wmm * breadth * plyThk * plyDensity_mm3 * 2
+    const slatKg = slatW * Wmm * plyThk * plyDensity_mm3 * numSlats
+    const crateWt = r(longKg + shortKg + slatKg, 3)
+    pkgWt = r(gw + crateWt, 2)
+    pkgL = r((Lmm + J1) / 10, 1)
+    pkgW = r(breadth / 10, 1)
+    pkgH = r((Wmm + J1) / 10, 1)
+    crate = {
+      crateWt,
+      cuts: [
+        { label: 'Long side boards', dim: `${longL} × ${breadth} mm`, qty: 2 },
+        { label: 'Short side boards', dim: `${Wmm} × ${breadth} mm`, qty: 2 },
+        { label: 'Base / cross slats', dim: `${slatW} × ${Wmm} mm`, qty: numSlats },
+      ],
+    }
+  } else {
+    const pad = 30
+    pkgL = r((Lmm + pad) / 10, 1)
+    pkgW = r((Wmm + pad) / 10, 1)
+    pkgH = r(30 / 10, 1)
+    pkgWt = gw
+  }
+
+  const volCm3 = r(pkgL * pkgW * pkgH, 0)
+  const volWtKg = r(volCm3 / 5000, 1)
+  const billableWt = Math.max(pkgWt, volWtKg)
+  const isByVol = volWtKg > pkgWt
+
+  const shipPerLeg = isByVol ? (volCm3 / 1000) * rvol : billableWt * rkg
+  const indicativeShip = r(Math.max(shipPerLeg * legs, 200), 2)
+  const totalShip = isZero ? 0 : indicativeShip
+
+  let activeTier = tiers[tiers.length - 1] || { from: 0, to: 1e9, pct: 0 }
+  for (const t of tiers) { if (c >= t.from && c < t.to) { activeTier = t; break } }
+  const markupAmt = r(c * (activeTier.pct / 100), 2)
+  const sellPrice = r(c + markupAmt, 2)
+  const totalSell = r(sellPrice + totalShip, 2)
+  const gpPct = totalSell > 0 ? r(markupAmt / totalSell * 100, 1) : 0
+  const multiplier = c > 0 ? r(totalSell / c, 2) : 0
+
+  return {
+    isLam, isZero, legs, pkgL, pkgW, pkgH, pkgWt, volCm3, volWtKg, billableWt, isByVol,
+    indicativeShip, totalShip, activeTier, markupAmt, sellPrice, totalSell, gpPct, multiplier, gw,
+    crate, Lc, Wc, Tc,
+  }
+}
+
+// ── Print sheets (open in a clean new window) ──
+const PRINT_CSS = `
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color:#000; padding:20mm; font-size:11pt; }
+  .hdr { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid #000; padding-bottom:8pt; margin-bottom:16pt; }
+  .title { font-size:16pt; font-weight:700; } .sub { font-size:9pt; color:#555; margin-top:3pt; }
+  .meta { font-size:9pt; text-align:right; color:#333; line-height:1.8; }
+  .logo { font-size:20pt; font-weight:800; letter-spacing:-.02em; } .logo span { color:#C17D3C; }
+  .stitle { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#555; margin:14pt 0 6pt; border-bottom:1px solid #ccc; padding-bottom:3pt; }
+  table { width:100%; border-collapse:collapse; font-size:11pt; margin-bottom:4pt; }
+  th { text-align:left; padding:5pt 8pt; background:#f0f0f0; border:1px solid #ccc; font-size:9pt; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  td { padding:8pt; border:1px solid #ddd; vertical-align:middle; }
+  tr:nth-child(even) td { background:#fafafa; }
+  .right { text-align:right; }
+  .total td { background:#1A1814 !important; color:#fff !important; font-weight:700; font-size:12pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .subtotal td { background:#f5f3ee !important; font-weight:600; }
+  .cbox { width:11pt; height:11pt; border:1.5px solid #333; display:inline-block; }
+  .totals { margin-top:10pt; display:flex; gap:24pt; flex-wrap:wrap; font-size:10pt; }
+  .validity { margin-top:14pt; padding:10pt 12pt; border:1pt solid #ccc; border-radius:4pt; font-size:10pt; background:#fafafa; }
+  .validity strong { display:block; margin-bottom:4pt; font-size:11pt; }
+  .sign { margin-top:24pt; display:grid; grid-template-columns:1fr 1fr; gap:30pt; }
+  .signline { border-top:1pt solid #000; padding-top:4pt; font-size:9pt; color:#555; margin-top:30pt; }
+  .foot { margin-top:20pt; padding-top:8pt; border-top:1px solid #ccc; font-size:8pt; color:#888; display:flex; justify-content:space-between; }
+`
+function openPrint(title, bodyHtml) {
+  const w = window.open('', '_blank')
+  if (!w) { alert('Pop-up blocked — allow pop-ups to print.'); return }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>${PRINT_CSS}</style></head><body>${bodyHtml}</body></html>`)
+  w.document.close(); w.focus()
+  setTimeout(() => w.print(), 350)
+}
 
 export default function GlassPricingPage() {
   const { perm } = useAuth()
@@ -38,14 +132,19 @@ export default function GlassPricingPage() {
 
   const [pricing, setPricing] = useState(DEFAULT_PRICING)
   const [glassType, setGlassType] = useState('flat_tough')
+  const [shipType, setShipType] = useState('single')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [len, setLen] = useState(120)
   const [wid, setWid] = useState(60)
   const [thk, setThk] = useState(0.6)
-  const [gwt, setGwt] = useState(12)
   const [cost, setCost] = useState(3500)
+  const [rkg, setRkg] = useState(18)
+  const [rvol, setRvol] = useState(12)
+
+  const [weightOverride, setWeightOverride] = useState(false)
+  const [manualWt, setManualWt] = useState('')
 
   useEffect(() => {
     if (!LIVE) return
@@ -55,72 +154,134 @@ export default function GlassPricingPage() {
   const tiers = pricing[glassType] || []
   const isLam = glassType === 'laminated'
 
-  // ── Calculations ──
-  const calc = useMemo(() => {
-    // Dimensions are entered in cm.
-    const L = +len || 0, W = +wid || 0, T = +thk || 0, gw = +gwt || 0, c = +cost || 0
+  // Auto weight from dims + density (cm → m³)
+  const autoWt = useMemo(() => {
+    const vol = (len / 100) * (wid / 100) * (thk / 100)
+    return r(vol * GLASS_DENSITY[glassType], 2)
+  }, [len, wid, thk, glassType])
 
-    // Packaging simulation (size + weight reference only — no shipping cost)
-    const crateThkCm = isLam ? 5 : 0       // timber crate wall thickness (cm)
-    const padCm = 8
-    const pkgL = Math.ceil(L + padCm * 2 + crateThkCm * 2 + (isLam ? 10 : 0))
-    const pkgW = Math.ceil(W + padCm * 2 + crateThkCm * 2 + (isLam ? 10 : 0))
-    const pkgH = Math.ceil(T + padCm + (isLam ? 30 : 20) + crateThkCm * 2 + (isLam ? 10 : 0))
+  const glassWt = weightOverride ? (+manualWt || 0) : autoWt
 
-    const foamDensity = 0.03, crateDensity = 0.6
-    let pkgWt = gw
-    const foamVol = (pkgL * pkgW * pkgH) / 1000 - (L * W * T) / 1000
-    pkgWt += foamVol * foamDensity
-    if (isLam) {
-      const crateWood = 2 * ((pkgL * pkgH + pkgW * pkgH) * crateThkCm) / 1000
-      pkgWt += crateWood * crateDensity
-    }
-    pkgWt = r(pkgWt, 1)
-    const volCm3 = pkgL * pkgW * pkgH
+  const calc = useMemo(
+    () => computeAll({ glassType, shipType, lenCm: len, widCm: wid, thkCm: thk, glassWt, cost, rkg, rvol, tiers }),
+    [glassType, shipType, len, wid, thk, glassWt, cost, rkg, rvol, tiers]
+  )
 
-    // Markup
-    let activeTier = tiers[tiers.length - 1] || { from: 0, to: 1e9, pct: 0 }
-    for (const t of tiers) { if (c >= t.from && c < t.to) { activeTier = t; break } }
-    const markupAmt = r(c * (activeTier.pct / 100), 2)
-    const sellPrice = r(c + markupAmt, 2)
-    const gpPct = sellPrice > 0 ? r(markupAmt / sellPrice * 100, 1) : 0
-    const multiplier = c > 0 ? r(sellPrice / c, 2) : 0
-
-    return { pkgL, pkgW, pkgH, pkgWt, volCm3, activeTier, markupAmt, sellPrice, gpPct, multiplier }
-  }, [len, wid, thk, gwt, cost, tiers, isLam])
-
-  // ── Tier editing ──
-  const updateTierPct = (idx, value) => {
-    setPricing(prev => {
-      const next = { ...prev, [glassType]: prev[glassType].map((t, i) => i === idx ? { ...t, pct: +value } : t) }
-      return next
-    })
-  }
+  const updateTierPct = (idx, value) =>
+    setPricing(prev => ({ ...prev, [glassType]: prev[glassType].map((t, i) => i === idx ? { ...t, pct: +value } : t) }))
 
   const saveTiers = async () => {
     setSaving(true)
-    try {
-      if (LIVE) await saveGlassPricing(pricing)
-      setEditing(false)
-    } catch (err) {
-      alert('Save failed: ' + err.message)
-    } finally { setSaving(false) }
+    try { if (LIVE) await saveGlassPricing(pricing); setEditing(false) }
+    catch (err) { alert('Save failed: ' + err.message) }
+    finally { setSaving(false) }
+  }
+  const resetTiers = () => setPricing(prev => ({ ...prev, [glassType]: DEFAULT_PRICING[glassType].map(t => ({ ...t })) }))
+
+  // ── Print builders ──
+  const printDate = () => new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  const printCuttingList = () => {
+    if (!calc.crate) return
+    const d = printDate()
+    const rows = calc.crate.cuts.map(cut => {
+      const [a, b] = cut.dim.replace(' mm', '').split('×').map(s => s.trim())
+      return `<tr><td style="text-align:center"><span class="cbox"></span></td><td>${cut.label}</td><td><strong>${a}</strong></td><td><strong>${b}</strong></td><td>18 mm</td><td style="text-align:center"><strong>${cut.qty}</strong></td></tr>`
+    }).join('')
+    openPrint('Crate Cutting List', `
+      <div class="hdr">
+        <div><div class="title">Crate Cutting List</div><div class="sub">18mm Shutterply · 150mm breadth · Ag &amp; construction glazing</div></div>
+        <div class="meta">Date: ${d}<br>Glass type: Laminated<br>Glass dims: ${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm<br>Glass weight: ${calc.gw.toFixed(2)} kg</div>
+      </div>
+      <div class="stitle">Crate external dimensions</div>
+      <table><tbody>
+        <tr><td>Length</td><td><strong>${calc.pkgL} cm</strong></td><td>Depth (breadth)</td><td><strong>${calc.pkgW} cm</strong></td><td>Height</td><td><strong>${calc.pkgH} cm</strong></td></tr>
+      </tbody></table>
+      <div class="stitle">Cutting list — 18mm shutterply</div>
+      <table>
+        <thead><tr><th>✓</th><th>Piece</th><th>Length (mm)</th><th>Width (mm)</th><th>Thickness</th><th>Qty</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="totals">
+        <div>Crate timber: <strong>${calc.crate.crateWt.toFixed(2)} kg</strong></div>
+        <div>Glass: <strong>${calc.gw.toFixed(2)} kg</strong></div>
+        <div>Total packed: <strong>${calc.pkgWt.toFixed(2)} kg</strong></div>
+        <div>Billed freight: <strong>${calc.billableWt.toFixed(1)} kg</strong></div>
+      </div>
+      <div class="foot"><span>Glass Pricing Calculator — Internal use only</span><span>Printed ${d}</span></div>
+    `)
   }
 
-  const resetTiers = () => {
-    setPricing(prev => ({ ...prev, [glassType]: DEFAULT_PRICING[glassType].map(t => ({ ...t })) }))
+  const printQuote = () => {
+    const d = printDate()
+    const ref = 'Q-' + Date.now().toString(36).toUpperCase().slice(-6)
+    const validUntil = new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' })
+    const typeLabel = TYPE_LABELS[glassType]
+    const shipLabel = calc.isZero ? 'Supplier delivers direct' : calc.legs === 2 ? 'Double shipment (agent → depot → customer)' : 'Single shipment'
+    const packLabel = isLam ? `Timber crate — ${calc.pkgL}×${calc.pkgW}×${calc.pkgH} cm` : `Aerothene edge wrap (flat) — ${calc.pkgL}×${calc.pkgW}×${calc.pkgH} cm`
+    const shipRow = calc.isZero
+      ? `<tr><td>Shipping &amp; freight</td><td>Supplier delivers direct</td><td class="right"><strong style="color:#2D7A4F">No charge</strong></td></tr>`
+      : `<tr><td>Shipping &amp; freight</td><td>${shipLabel} · billed on ${calc.isByVol ? 'volumetric' : 'actual'} weight (${calc.billableWt.toFixed(1)} kg)</td><td class="right">${fmtR(calc.totalShip)}</td></tr>`
+    const vat = r(calc.totalSell * 0.15, 2)
+    const incl = r(calc.totalSell * 1.15, 2)
+    openPrint('Quote', `
+      <div class="hdr">
+        <div><div class="logo">GLASS<span>QUOTE</span></div><div class="sub">Agricultural &amp; Construction Machine Glazing</div></div>
+        <div class="meta">Quote ref: <strong>${ref}</strong><br>Date: ${d}<br>Valid until: ${validUntil}</div>
+      </div>
+      <div class="stitle">Glass specification</div>
+      <table><tbody>
+        <tr><td>Glass type</td><td><strong>${typeLabel}</strong></td></tr>
+        <tr><td>Dimensions (L × W × T)</td><td><strong>${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm</strong></td></tr>
+        <tr><td>Glass weight</td><td>${calc.gw.toFixed(2)} kg</td></tr>
+      </tbody></table>
+      <div class="stitle">Packaging</div>
+      <table><tbody>
+        <tr><td>Pack method</td><td>${isLam ? '18mm shutterply timber crate, 150mm breadth' : 'Aerothene (bubble-wrap) edge protection, laid flat'}</td></tr>
+        <tr><td>Packed dimensions</td><td>${packLabel}</td></tr>
+        <tr><td>Total packed weight</td><td>${calc.pkgWt.toFixed(2)} kg</td></tr>
+      </tbody></table>
+      <div class="stitle">Pricing</div>
+      <table>
+        <thead><tr><th>Item</th><th>Notes</th><th class="right">Amount (ZAR)</th></tr></thead>
+        <tbody>
+          <tr><td>Glass — ${typeLabel}</td><td>${calc.Lc}×${calc.Wc}×${calc.Tc} cm</td><td class="right">${fmtR(calc.sellPrice)}</td></tr>
+          ${shipRow}
+          <tr class="subtotal"><td colspan="2"><strong>Total (excl. VAT)</strong></td><td class="right"><strong>${fmtR(calc.totalSell)}</strong></td></tr>
+          <tr><td colspan="2">VAT @ 15%</td><td class="right">${fmtR(vat)}</td></tr>
+          <tr class="total"><td colspan="2">TOTAL DUE (incl. VAT)</td><td class="right">${fmtR(incl)}</td></tr>
+        </tbody>
+      </table>
+      <div class="validity"><strong>Terms &amp; conditions</strong>Valid for 30 days (until ${validUntil}). Pricing is indicative and subject to final supplier confirmation. Shipping costs are estimates based on packed weight and may vary. All prices in ZAR.</div>
+      <div class="sign"><div><div class="signline">Accepted by (customer signature &amp; date)</div></div><div><div class="signline">Authorised by (company representative)</div></div></div>
+      <div class="foot"><span>Quote ref: ${ref}</span><span>Printed ${d}</span></div>
+    `)
   }
 
   const inputCls = "w-full h-10 px-3 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#FECD28] focus:ring-1 focus:ring-[#FECD28]/30"
   const labelCls = "block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5"
+  const shipBtn = (key, label, active) => (
+    <button key={key} onClick={() => setShipType(key)}
+      className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg border transition-colors
+        ${active ? (key === 'zero' ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700' : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700')
+          : 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>
+      {label}
+    </button>
+  )
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <Calculator size={22} className="text-slate-400" /> Glass Pricing Calculator
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Stepped markup on buy-in cost. Markup % steps down as item value rises.</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Calculator size={22} className="text-slate-400" /> Glass Pricing Calculator
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Stepped markup, auto packaging weight & shipping. Markup % steps down as item value rises.</p>
+        </div>
+        <button onClick={printQuote} style={{ backgroundColor: '#FECD28' }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-[#111111]">
+          <Printer size={15} /> Print quote
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5">
@@ -142,25 +303,61 @@ export default function GlassPricingPage() {
               </div>
               {isLam && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
-                  Laminated — a timber crate is included in the packaging simulation.
+                  Laminated — an 18mm shutterply crate is included in the packaging.
                 </p>
               )}
             </div>
 
             {/* Dimensions */}
             <div>
-              <label className={labelCls}>Glass dimensions</label>
+              <label className={labelCls}>Glass dimensions (cm)</label>
               <div className="grid grid-cols-3 gap-2">
-                <div><span className="text-[11px] text-slate-400">Length (cm)</span><input type="number" step="0.1" className={inputCls} value={len} onChange={e => setLen(e.target.value)} /></div>
-                <div><span className="text-[11px] text-slate-400">Width (cm)</span><input type="number" step="0.1" className={inputCls} value={wid} onChange={e => setWid(e.target.value)} /></div>
-                <div><span className="text-[11px] text-slate-400">Thick (cm)</span><input type="number" step="0.1" className={inputCls} value={thk} onChange={e => setThk(e.target.value)} /></div>
+                <div><span className="text-[11px] text-slate-400">Length</span><input type="number" step="0.1" className={inputCls} value={len} onChange={e => setLen(e.target.value)} /></div>
+                <div><span className="text-[11px] text-slate-400">Width</span><input type="number" step="0.1" className={inputCls} value={wid} onChange={e => setWid(e.target.value)} /></div>
+                <div><span className="text-[11px] text-slate-400">Thick</span><input type="number" step="0.1" className={inputCls} value={thk} onChange={e => setThk(e.target.value)} /></div>
               </div>
             </div>
 
+            {/* Weight + cost */}
             <div className="grid grid-cols-2 gap-2">
-              <div><label className={labelCls}>Glass weight (kg)</label><input type="number" step="0.1" className={inputCls} value={gwt} onChange={e => setGwt(e.target.value)} /></div>
-              <div><label className={labelCls}>Buy-in cost (ZAR)</label><input type="number" className={inputCls} value={cost} onChange={e => setCost(e.target.value)} /></div>
+              <div>
+                <label className={labelCls}>
+                  Glass weight (kg)
+                  <button onClick={() => { setWeightOverride(o => !o); if (!weightOverride) setManualWt(String(autoWt)) }}
+                    className="ml-2 text-[11px] text-blue-600 dark:text-blue-400 underline font-normal">
+                    {weightOverride ? 'use auto' : 'override'}
+                  </button>
+                </label>
+                {weightOverride ? (
+                  <input type="number" step="0.1" className={inputCls} value={manualWt} onChange={e => setManualWt(e.target.value)} autoFocus />
+                ) : (
+                  <div className="relative">
+                    <input readOnly value={autoWt}
+                      className="w-full h-10 px-3 text-sm rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold" />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-green-600 dark:text-green-400">AUTO</span>
+                  </div>
+                )}
+                <p className="text-[11px] text-slate-400 mt-1">{weightOverride ? 'Manual entry' : 'From dims & density'}</p>
+              </div>
+              <div>
+                <label className={labelCls}>Buy-in cost (ZAR)</label>
+                <input type="number" className={inputCls} value={cost} onChange={e => setCost(e.target.value)} />
+                <p className="text-[11px] text-slate-400 mt-1">Excluding shipping</p>
+              </div>
             </div>
+          </div>
+
+          {/* Shipment */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-2">
+            <label className={labelCls}>Shipment</label>
+            {shipBtn('single', 'Single — agent to us, we deliver', shipType === 'single')}
+            {shipBtn('double', 'Double — agent → depot → customer', shipType === 'double')}
+            {shipBtn('zero', 'Supplier delivers direct — no cost', shipType === 'zero')}
+            <div className={`grid grid-cols-2 gap-2 pt-2 ${shipType === 'zero' ? 'opacity-40 pointer-events-none' : ''}`}>
+              <div><span className="text-[11px] text-slate-400">Rate per kg</span><input type="number" step="0.5" className={inputCls} value={rkg} onChange={e => setRkg(e.target.value)} /></div>
+              <div><span className="text-[11px] text-slate-400">Rate per 1 000 cm³</span><input type="number" step="0.5" className={inputCls} value={rvol} onChange={e => setRvol(e.target.value)} /></div>
+            </div>
+            <p className="text-[11px] text-slate-400">Billed on greater of actual vs volumetric (cm³ ÷ 5 000). Min R 200/leg.</p>
           </div>
 
           {/* Tier table */}
@@ -173,7 +370,6 @@ export default function GlassPricingPage() {
                 </button>
               )}
             </div>
-
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[11px] uppercase tracking-wide text-slate-400">
@@ -205,7 +401,6 @@ export default function GlassPricingPage() {
                 })}
               </tbody>
             </table>
-
             {editing && (
               <div className="flex items-center gap-2 mt-3">
                 <button onClick={saveTiers} disabled={saving} style={{ backgroundColor: '#FECD28' }}
@@ -227,21 +422,26 @@ export default function GlassPricingPage() {
         {/* ── RIGHT: results ── */}
         <div className="space-y-4">
           {/* Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Buy-in cost</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{fmtR(cost)}</p>
+              <p className="text-base font-bold text-slate-900 dark:text-slate-100">{fmtR(cost)}</p>
               <p className="text-xs text-slate-400 mt-1">Goods excl. freight</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Shipping</p>
+              <p className={`text-base font-bold ${calc.isZero ? 'text-green-600 dark:text-green-400' : 'text-slate-900 dark:text-slate-100'}`}>{calc.isZero ? 'None' : fmtR(calc.totalShip)}</p>
+              <p className="text-xs text-slate-400 mt-1">{calc.isZero ? 'Supplier direct' : `${calc.legs} leg${calc.legs > 1 ? 's' : ''}, ${calc.isByVol ? 'vol' : 'actual'} wt`}</p>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-l-4 border-l-green-500 p-4">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Gross profit</p>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">{calc.gpPct}%</p>
-              <p className="text-xs text-slate-400 mt-1">Margin on sell price</p>
+              <p className="text-base font-bold text-green-600 dark:text-green-400">{calc.gpPct}%</p>
+              <p className="text-xs text-slate-400 mt-1">Margin on sell</p>
             </div>
-            <div className="bg-[#111111] rounded-2xl p-4 col-span-2 sm:col-span-1">
-              <p className="text-xs font-medium text-white/50 uppercase tracking-wide mb-1">Selling price</p>
-              <p className="text-lg font-bold text-white">{fmtR(calc.sellPrice)}</p>
-              <p className="text-xs text-white/45 mt-1">{calc.multiplier}× buy-in cost</p>
+            <div className="bg-[#111111] rounded-2xl p-4">
+              <p className="text-xs font-medium text-white/50 uppercase tracking-wide mb-1">Total to customer</p>
+              <p className="text-base font-bold text-white">{fmtR(calc.totalSell)}</p>
+              <p className="text-xs text-white/45 mt-1">{calc.multiplier}× buy-in</p>
             </div>
           </div>
 
@@ -263,32 +463,70 @@ export default function GlassPricingPage() {
                 </div>
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{fmtR(calc.markupAmt)}</span>
               </div>
-              <div className="flex justify-between items-center py-3.5 bg-slate-50 dark:bg-slate-900/40 -mx-5 px-5">
+              <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/30 -mx-5 px-5">
                 <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Goods selling price</span>
-                <span className="text-lg font-bold text-green-600 dark:text-green-400">{fmtR(calc.sellPrice)}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{fmtR(calc.sellPrice)}</span>
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700">
+                <div>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Shipping estimate {calc.isZero && <span className="text-xs text-green-600 dark:text-green-400">(supplier direct)</span>}</span>
+                  {!calc.isZero && <span className="block text-xs text-slate-400 mt-0.5">{calc.legs} leg{calc.legs > 1 ? 's' : ''} · billed on {calc.isByVol ? 'volumetric' : 'actual'} weight ({calc.billableWt.toFixed(1)} kg)</span>}
+                </div>
+                <span className={`text-sm font-semibold ${calc.isZero ? 'text-green-600 dark:text-green-400' : 'text-slate-700 dark:text-slate-200'}`}>{calc.isZero ? 'R 0.00' : fmtR(calc.totalShip)}</span>
+              </div>
+              <div className="flex justify-between items-center py-3.5 bg-slate-50 dark:bg-slate-900/40 -mx-5 px-5">
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Total to customer</span>
+                <span className="text-lg font-bold text-green-600 dark:text-green-400">{fmtR(calc.totalSell)}</span>
               </div>
             </div>
           </div>
 
-          {/* Packaging simulation */}
+          {/* Packaging */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Packaging simulation (reference)</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-lg p-3">
-                <p className="text-[11px] text-slate-400 mb-0.5">Pack size (cm)</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{calc.pkgL}×{calc.pkgW}×{calc.pkgH}</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-lg p-3">
-                <p className="text-[11px] text-slate-400 mb-0.5">Est. packed weight</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{calc.pkgWt.toFixed(1)} <span className="text-[11px] text-slate-400">kg</span></p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-900/40 rounded-lg p-3">
-                <p className="text-[11px] text-slate-400 mb-0.5">Volume</p>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{(calc.volCm3 / 1e6).toFixed(3)} <span className="text-[11px] text-slate-400">m³</span></p>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Packaging simulation</h3>
+              {isLam && calc.crate && (
+                <button onClick={printCuttingList} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1 hover:bg-slate-50 dark:hover:bg-slate-700">
+                  <FileText size={12} /> Print cutting list
+                </button>
+              )}
             </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                ['Pack size (cm)', `${calc.pkgL} × ${calc.pkgW} × ${calc.pkgH}`],
+                ['Total packed weight', `${calc.pkgWt.toFixed(1)} kg`],
+                ['Billed weight', `${calc.billableWt.toFixed(1)} kg ${calc.isByVol ? '(vol)' : '(actual)'}`],
+                ['Glass weight', `${calc.gw.toFixed(2)} kg`],
+                ['Vol weight', `${calc.volWtKg.toFixed(1)} kg`],
+                ['Volume', `${(calc.volCm3 / 1e6).toFixed(3)} m³`],
+              ].map(([label, val]) => (
+                <div key={label} className="bg-slate-50 dark:bg-slate-900/40 rounded-lg p-3">
+                  <p className="text-[11px] text-slate-400 mb-0.5">{label}</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{val}</p>
+                </div>
+              ))}
+            </div>
+
+            {isLam && calc.crate && (
+              <div className="mt-4 border-t border-slate-100 dark:border-slate-700 pt-3">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">18mm Shutterply crate — cutting list <span className="text-amber-600 dark:text-amber-400">(150mm breadth)</span></p>
+                <table className="w-full text-xs">
+                  <thead><tr className="text-slate-400"><th className="text-left font-medium pb-1">Piece</th><th className="text-left font-medium pb-1">Dimensions (mm)</th><th className="text-right font-medium pb-1">Qty</th></tr></thead>
+                  <tbody>
+                    {calc.crate.cuts.map((c, i) => (
+                      <tr key={i} className="border-t border-slate-100 dark:border-slate-700">
+                        <td className="py-1.5 text-slate-600 dark:text-slate-300">{c.label}</td>
+                        <td className="py-1.5 text-slate-800 dark:text-slate-200 font-medium">{c.dim}</td>
+                        <td className="py-1.5 text-right text-slate-800 dark:text-slate-200">{c.qty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-[11px] text-slate-400 mt-2">Crate timber: <strong className="text-slate-600 dark:text-slate-300">{calc.crate.crateWt.toFixed(2)} kg</strong> · Glass: <strong className="text-slate-600 dark:text-slate-300">{calc.gw.toFixed(2)} kg</strong> · Total packed: <strong className="text-slate-600 dark:text-slate-300">{calc.pkgWt.toFixed(2)} kg</strong></p>
+              </div>
+            )}
             <p className="text-xs text-slate-400 mt-3">
-              {isLam ? 'Includes timber crate + foam inner padding.' : 'Foam & bubble-wrap padding only.'} Shipping cost is not included in this version.
+              {isLam ? 'Timber crate + glass. Billed on greater of actual vs volumetric weight.' : 'Aerothene edge protection, laid flat (+3 cm each side, 3 cm breadth). Weight = glass only.'}
             </p>
           </div>
         </div>

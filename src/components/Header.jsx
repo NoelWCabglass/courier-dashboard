@@ -40,6 +40,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     { key: 'staged',   label: 'Staged',     show: true },
     { key: 'dispatch', label: 'Dispatch',   show: can('canDispatch') },
     { key: 'wh',       label: 'WH Uploads', show: can('canView') },
+    { key: 'pricing',  label: 'Pricing',    show: can('canView') },
     { key: 'admin',    label: 'Admin',      show: can('canAdmin') },
   ].filter(t => t.show)
 

@@ -69,4 +69,14 @@ export const whUpload         = (categoryId, files, uploadedBy, notes) =>
   post('whUpload', { categoryId, files, uploadedBy, notes })
 export const deleteWHUpload   = (uploadId) => post('deleteWHUpload', { uploadId })
 
+// Glass pricing
+export async function fetchGlassPricing() {
+  const url = `${API_URL}?action=getGlassPricing&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load glass pricing')
+  return data.pricing
+}
+export const saveGlassPricing = (pricing) => post('saveGlassPricing', { pricing })
+
 export { LIVE }

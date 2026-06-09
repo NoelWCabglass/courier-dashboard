@@ -19,6 +19,7 @@ import StagedTab from './components/StagedTab'
 import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
 import WHUploadsPage from './components/WHUploadsPage'
+import GlassPricingPage from './components/GlassPricingPage'
 
 function Dashboard() {
   const { user, can } = useAuth()
@@ -352,6 +353,7 @@ function Dashboard() {
           <>
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
+            {activeTab === 'pricing'  && <GlassPricingPage />}
             {activeTab === 'staged' && (
               <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} onSaveNote={saveOrderNote} />
             )}

@@ -41,9 +41,9 @@ export default function GlassPricingPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const [len, setLen] = useState(1200)
-  const [wid, setWid] = useState(600)
-  const [thk, setThk] = useState(6)
+  const [len, setLen] = useState(120)
+  const [wid, setWid] = useState(60)
+  const [thk, setThk] = useState(0.6)
   const [gwt, setGwt] = useState(12)
   const [cost, setCost] = useState(3500)
 
@@ -57,21 +57,22 @@ export default function GlassPricingPage() {
 
   // ── Calculations ──
   const calc = useMemo(() => {
+    // Dimensions are entered in cm.
     const L = +len || 0, W = +wid || 0, T = +thk || 0, gw = +gwt || 0, c = +cost || 0
 
     // Packaging simulation (size + weight reference only — no shipping cost)
-    const crateThk = isLam ? 25 : 0
+    const crateThkCm = isLam ? 5 : 0       // timber crate wall thickness (cm)
     const padCm = 8
-    const pkgL = Math.ceil(L / 10 + padCm * 2 + crateThk * 2 / 10 + (isLam ? 10 : 0))
-    const pkgW = Math.ceil(W / 10 + padCm * 2 + crateThk * 2 / 10 + (isLam ? 10 : 0))
-    const pkgH = Math.ceil(T / 10 + padCm + (isLam ? 30 : 20) + crateThk * 2 / 10 + (isLam ? 10 : 0))
+    const pkgL = Math.ceil(L + padCm * 2 + crateThkCm * 2 + (isLam ? 10 : 0))
+    const pkgW = Math.ceil(W + padCm * 2 + crateThkCm * 2 + (isLam ? 10 : 0))
+    const pkgH = Math.ceil(T + padCm + (isLam ? 30 : 20) + crateThkCm * 2 + (isLam ? 10 : 0))
 
     const foamDensity = 0.03, crateDensity = 0.6
     let pkgWt = gw
-    const foamVol = (pkgL * pkgW * pkgH) / 1000 - (L / 10 * W / 10 * T / 10) / 1000
+    const foamVol = (pkgL * pkgW * pkgH) / 1000 - (L * W * T) / 1000
     pkgWt += foamVol * foamDensity
     if (isLam) {
-      const crateWood = 2 * ((pkgL * pkgH + pkgW * pkgH) * crateThk) / 1000
+      const crateWood = 2 * ((pkgL * pkgH + pkgW * pkgH) * crateThkCm) / 1000
       pkgWt += crateWood * crateDensity
     }
     pkgWt = r(pkgWt, 1)
@@ -150,9 +151,9 @@ export default function GlassPricingPage() {
             <div>
               <label className={labelCls}>Glass dimensions</label>
               <div className="grid grid-cols-3 gap-2">
-                <div><span className="text-[11px] text-slate-400">Length (mm)</span><input type="number" className={inputCls} value={len} onChange={e => setLen(e.target.value)} /></div>
-                <div><span className="text-[11px] text-slate-400">Width (mm)</span><input type="number" className={inputCls} value={wid} onChange={e => setWid(e.target.value)} /></div>
-                <div><span className="text-[11px] text-slate-400">Thick (mm)</span><input type="number" className={inputCls} value={thk} onChange={e => setThk(e.target.value)} /></div>
+                <div><span className="text-[11px] text-slate-400">Length (cm)</span><input type="number" step="0.1" className={inputCls} value={len} onChange={e => setLen(e.target.value)} /></div>
+                <div><span className="text-[11px] text-slate-400">Width (cm)</span><input type="number" step="0.1" className={inputCls} value={wid} onChange={e => setWid(e.target.value)} /></div>
+                <div><span className="text-[11px] text-slate-400">Thick (cm)</span><input type="number" step="0.1" className={inputCls} value={thk} onChange={e => setThk(e.target.value)} /></div>
               </div>
             </div>
 

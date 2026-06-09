@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import {
   PackageCheck, ClipboardList, Search, X, CheckCircle2, Circle,
-  ExternalLink, ArrowLeft, MapPin, Phone, Package, Printer
+  ExternalLink, ArrowLeft, MapPin, Phone, Package, Printer, StickyNote, Check
 } from 'lucide-react'
 import { STATUS } from '../mockData'
 import { openManifest } from '../manifest'
@@ -13,9 +13,11 @@ const COURIER_COLORS = {
 }
 
 // ---- Full-page detail ----
-function StagedDetail({ order, isPicked, onBack, onTogglePicked }) {
+function StagedDetail({ order, isPicked, onBack, onTogglePicked, onSaveNote }) {
   const totalParcels = order.items.reduce((s, it) => s + (Number(it.qty) || 0), 0)
   const totalWeight = order.items.reduce((s, it) => s + (Number(it.kg) || 0) * (Number(it.qty) || 0), 0)
+  const [noteDraft, setNoteDraft] = useState(order.note || '')
+  const [noteDirty, setNoteDirty] = useState(false)
   return (
     <div className="max-w-3xl mx-auto">
       <button onClick={onBack}
@@ -88,6 +90,35 @@ function StagedDetail({ order, isPicked, onBack, onTogglePicked }) {
         )}
       </div>
 
+      {/* Note */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 sm:p-6 mb-4">
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-3">
+          <StickyNote size={18} className="text-amber-500" /> Note
+        </h3>
+        <textarea
+          value={noteDraft}
+          onChange={e => { setNoteDraft(e.target.value); setNoteDirty(true) }}
+          placeholder="Add a note everyone can see — e.g. fragile, customer collecting, extra wrap…"
+          rows={3}
+          className="w-full text-sm px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-[#FECD28] focus:ring-1 focus:ring-[#FECD28]/30 resize-y"
+        />
+        {noteDirty && (
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => { onSaveNote(order.id, noteDraft); setNoteDirty(false) }}
+              style={{ backgroundColor: '#FECD28' }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#111111]">
+              <Check size={13} /> Save note
+            </button>
+            <button
+              onClick={() => { setNoteDraft(order.note || ''); setNoteDirty(false) }}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Single Picked button */}
       <div className="sticky bottom-0 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur sm:bg-transparent sm:py-0">
         <button onClick={() => onTogglePicked(order.id)}
@@ -112,7 +143,10 @@ function StagedCard({ order, isPicked, onOpen, onTogglePicked }) {
       <button onClick={() => onOpen(order.id)} className="w-full text-left">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{order.psNo}</p>
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+              {order.psNo}
+              {order.note && <StickyNote size={14} className="text-amber-500 shrink-0" title={order.note} />}
+            </p>
             <p className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{order.customer.company}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{order.address.city}, {order.address.province}</p>
           </div>
@@ -141,7 +175,7 @@ function StagedCard({ order, isPicked, onOpen, onTogglePicked }) {
 }
 
 // ---- Main ----
-export default function StagedTab({ orders, stagedIds, onTogglePicked }) {
+export default function StagedTab({ orders, stagedIds, onTogglePicked, onSaveNote }) {
   const [search, setSearch] = useState('')
   const [detailId, setDetailId] = useState(null)
 
@@ -172,7 +206,7 @@ export default function StagedTab({ orders, stagedIds, onTogglePicked }) {
   if (detailOrder) {
     return (
       <StagedDetail order={detailOrder} isPicked={stagedIds.has(detailOrder.id)}
-        onBack={() => setDetailId(null)} onTogglePicked={onTogglePicked} />
+        onBack={() => setDetailId(null)} onTogglePicked={onTogglePicked} onSaveNote={onSaveNote} />
     )
   }
 

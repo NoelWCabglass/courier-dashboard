@@ -353,7 +353,7 @@ function Dashboard() {
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
             {activeTab === 'staged' && (
-              <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} />
+              <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} onSaveNote={saveOrderNote} />
             )}
             {activeTab === 'dispatch' && (
               <DispatchTab orders={orders} history={history}

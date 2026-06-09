@@ -101,7 +101,7 @@ const PRINT_CSS = `
   .hdr { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid #000; padding-bottom:8pt; margin-bottom:16pt; }
   .title { font-size:16pt; font-weight:700; } .sub { font-size:9pt; color:#555; margin-top:3pt; }
   .meta { font-size:9pt; text-align:right; color:#333; line-height:1.8; }
-  .logo { font-size:20pt; font-weight:800; letter-spacing:-.02em; } .logo span { color:#C17D3C; }
+  .brand { font-size:20pt; font-weight:800; letter-spacing:-.02em; color:#111; }
   .stitle { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#555; margin:14pt 0 6pt; border-bottom:1px solid #ccc; padding-bottom:3pt; }
   table { width:100%; border-collapse:collapse; font-size:11pt; margin-bottom:4pt; }
   th { text-align:left; padding:5pt 8pt; background:#f0f0f0; border:1px solid #ccc; font-size:9pt; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
@@ -118,6 +118,18 @@ const PRINT_CSS = `
   .signline { border-top:1pt solid #000; padding-top:4pt; font-size:9pt; color:#555; margin-top:30pt; }
   .foot { margin-top:20pt; padding-top:8pt; border-top:1px solid #ccc; font-size:8pt; color:#888; display:flex; justify-content:space-between; }
 `
+function brandHeader(rightMeta) {
+  const logo = `${window.location.origin}/Cabglass_logo_PNG.avif`
+  return `
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:12pt">
+        <img src="${logo}" alt="CabGlass" style="height:34pt;width:auto" onerror="this.style.display='none'">
+        <div><div class="brand">CabGlass</div><div class="sub">Agricultural &amp; Construction Machine Glazing</div></div>
+      </div>
+      <div class="meta">${rightMeta}</div>
+    </div>`
+}
+
 function openPrint(title, bodyHtml) {
   const w = window.open('', '_blank')
   if (!w) { alert('Pop-up blocked — allow pop-ups to print.'); return }
@@ -189,10 +201,7 @@ export default function GlassPricingPage() {
       return `<tr><td style="text-align:center"><span class="cbox"></span></td><td>${cut.label}</td><td><strong>${a}</strong></td><td><strong>${b}</strong></td><td>18 mm</td><td style="text-align:center"><strong>${cut.qty}</strong></td></tr>`
     }).join('')
     openPrint('Crate Cutting List', `
-      <div class="hdr">
-        <div><div class="title">Crate Cutting List</div><div class="sub">18mm Shutterply · 150mm breadth · Ag &amp; construction glazing</div></div>
-        <div class="meta">Date: ${d}<br>Glass type: Laminated<br>Glass dims: ${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm<br>Glass weight: ${calc.gw.toFixed(2)} kg</div>
-      </div>
+      ${brandHeader(`Crate Cutting List<br>Date: ${d}<br>Glass: Laminated · ${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm · ${calc.gw.toFixed(2)} kg`)}
       <div class="stitle">Crate external dimensions</div>
       <table><tbody>
         <tr><td>Length</td><td><strong>${calc.pkgL} cm</strong></td><td>Depth (breadth)</td><td><strong>${calc.pkgW} cm</strong></td><td>Height</td><td><strong>${calc.pkgH} cm</strong></td></tr>
@@ -214,8 +223,6 @@ export default function GlassPricingPage() {
 
   const printQuote = () => {
     const d = printDate()
-    const ref = 'Q-' + Date.now().toString(36).toUpperCase().slice(-6)
-    const validUntil = new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' })
     const typeLabel = TYPE_LABELS[glassType]
     const shipLabel = calc.isZero ? 'Supplier delivers direct' : calc.legs === 2 ? 'Double shipment (agent → depot → customer)' : 'Single shipment'
     const packLabel = isLam ? `Timber crate — ${calc.pkgL}×${calc.pkgW}×${calc.pkgH} cm` : `Aerothene edge wrap (flat) — ${calc.pkgL}×${calc.pkgW}×${calc.pkgH} cm`
@@ -224,11 +231,8 @@ export default function GlassPricingPage() {
       : `<tr><td>Shipping &amp; freight</td><td>${shipLabel} · billed on ${calc.isByVol ? 'volumetric' : 'actual'} weight (${calc.billableWt.toFixed(1)} kg)</td><td class="right">${fmtR(calc.totalShip)}</td></tr>`
     const vat = r(calc.totalSell * 0.15, 2)
     const incl = r(calc.totalSell * 1.15, 2)
-    openPrint('Quote', `
-      <div class="hdr">
-        <div><div class="logo">GLASS<span>QUOTE</span></div><div class="sub">Agricultural &amp; Construction Machine Glazing</div></div>
-        <div class="meta">Quote ref: <strong>${ref}</strong><br>Date: ${d}<br>Valid until: ${validUntil}</div>
-      </div>
+    openPrint('Internal Pricing Sheet', `
+      ${brandHeader(`Internal Pricing Sheet<br>Date: ${d}`)}
       <div class="stitle">Glass specification</div>
       <table><tbody>
         <tr><td>Glass type</td><td><strong>${typeLabel}</strong></td></tr>
@@ -245,16 +249,16 @@ export default function GlassPricingPage() {
       <table>
         <thead><tr><th>Item</th><th>Notes</th><th class="right">Amount (ZAR)</th></tr></thead>
         <tbody>
-          <tr><td>Glass — ${typeLabel}</td><td>${calc.Lc}×${calc.Wc}×${calc.Tc} cm</td><td class="right">${fmtR(calc.sellPrice)}</td></tr>
+          <tr><td>Buy-in cost</td><td>Goods excl. freight</td><td class="right">${fmtR(cost)}</td></tr>
+          <tr><td>Markup</td><td>${calc.activeTier.pct}% on cost</td><td class="right">${fmtR(calc.markupAmt)}</td></tr>
+          <tr><td>Glass — ${typeLabel}</td><td>Selling price (goods)</td><td class="right">${fmtR(calc.sellPrice)}</td></tr>
           ${shipRow}
           <tr class="subtotal"><td colspan="2"><strong>Total (excl. VAT)</strong></td><td class="right"><strong>${fmtR(calc.totalSell)}</strong></td></tr>
           <tr><td colspan="2">VAT @ 15%</td><td class="right">${fmtR(vat)}</td></tr>
-          <tr class="total"><td colspan="2">TOTAL DUE (incl. VAT)</td><td class="right">${fmtR(incl)}</td></tr>
+          <tr class="total"><td colspan="2">TOTAL (incl. VAT)</td><td class="right">${fmtR(incl)}</td></tr>
         </tbody>
       </table>
-      <div class="validity"><strong>Terms &amp; conditions</strong>Valid for 30 days (until ${validUntil}). Pricing is indicative and subject to final supplier confirmation. Shipping costs are estimates based on packed weight and may vary. All prices in ZAR.</div>
-      <div class="sign"><div><div class="signline">Accepted by (customer signature &amp; date)</div></div><div><div class="signline">Authorised by (company representative)</div></div></div>
-      <div class="foot"><span>Quote ref: ${ref}</span><span>Printed ${d}</span></div>
+      <div class="foot"><span>CabGlass — Internal use only</span><span>Printed ${d}</span></div>
     `)
   }
 
@@ -280,7 +284,7 @@ export default function GlassPricingPage() {
         </div>
         <button onClick={printQuote} style={{ backgroundColor: '#FECD28' }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-[#111111]">
-          <Printer size={15} /> Print quote
+          <Printer size={15} /> Print pricing sheet
         </button>
       </div>
 

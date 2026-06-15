@@ -18,7 +18,7 @@ import DispatchTab from './components/DispatchTab'
 import StagedTab from './components/StagedTab'
 import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
-import WHUploadsPage from './components/WHUploadsPage'
+import WHUploadsPage, { buildWHNotifications } from './components/WHUploadsPage'
 import GlassPricingPage from './components/GlassPricingPage'
 
 function Dashboard() {
@@ -327,14 +327,19 @@ function Dashboard() {
     setDateFrom(''); setDateTo('')
   }
 
-  // Notifications derived from the orders already in memory (no extra fetch).
-  // Clicking one jumps to that order and opens its detail panel.
+  // Notifications derived from data already in memory (no extra fetch).
+  // Clicking one jumps to the relevant tab/order.
   const openOrder = (notif) => {
+    if (notif.whTab) { setActiveTab('wh'); return }
     const inHistory = !!history.find(o => o.id === notif.orderId)
     setActiveTab(inHistory ? 'history' : 'orders')
     setSelectedId(notif.orderId)
   }
-  const notif = useNotifications(orders)
+  const whNotifs = useMemo(
+    () => buildWHNotifications(whData.categories, whData.uploads, user, perm('wh', 'edit')),
+    [whData, user, perm]
+  )
+  const notif = useNotifications(orders, whNotifs)
   const notifications = { ...notif, onSelect: openOrder }
 
   return (

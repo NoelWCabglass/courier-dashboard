@@ -82,7 +82,7 @@ function loadTest() {
   }
 }
 
-export function useNotifications(orders) {
+export function useNotifications(orders, extraNotifs = []) {
   const [readIds, setReadIds] = useState(loadReadIds)
   const [testNotifs, setTestNotifs] = useState(loadTest)
 
@@ -108,8 +108,8 @@ export function useNotifications(orders) {
 
   const notifications = useMemo(() => {
     const derived = buildNotifications(orders)
-    return [...testNotifs, ...derived].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  }, [orders, testNotifs])
+    return [...testNotifs, ...extraNotifs, ...derived].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  }, [orders, testNotifs, extraNotifs])
 
   const persist = useCallback((set) => {
     setReadIds(set)

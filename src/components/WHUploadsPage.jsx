@@ -467,6 +467,49 @@ function CategoryPage({ cat, uploads, users, onBack, onUploadDone, onEditCat, ca
   )
 }
 
+// ── WH notifications (due-soon / overdue) for the notification bell ────────────
+// Notify the assigned user; if a category has no assignee, notify WH managers
+// (anyone with wh-edit permission). IDs are stable per period so read-state
+// sticks and a fresh alert only appears for a new period.
+export function buildWHNotifications(categories, uploads, user, canEditWH) {
+  if (!user) return []
+  const out = []
+  const mine = (cat) => cat.assignedUser ? cat.assignedUser === user.username : canEditWH
+  for (const cat of (categories || []).filter(c => c.active !== false)) {
+    if (!mine(cat)) continue
+    if (cat.mode === 'weekly') {
+      const agg = aggregateWeekly(cat, uploads)
+      const periodKey = `${agg.year}-W${agg.currentWeek}`
+      if (agg.overdue > 0) {
+        out.push({ id: `wh::${cat.id}::overdue::${periodKey}`, whTab: true, severity: 'error',
+          title: `${cat.name} overdue`,
+          detail: `${agg.overdue} week${agg.overdue > 1 ? 's' : ''} not uploaded — most recent was due Wednesday.`,
+          timestamp: isoWeekDeadline(agg.year, agg.currentWeek).toISOString() })
+      } else if (agg.status === 'due-soon') {
+        out.push({ id: `wh::${cat.id}::due::${periodKey}`, whTab: true, severity: 'warning',
+          title: `${cat.name} due this week`,
+          detail: `Week ${agg.currentWeek} upload is due by Wednesday.`,
+          timestamp: isoWeekDeadline(agg.year, agg.currentWeek).toISOString() })
+      }
+    } else {
+      const s = getCategoryStatus(cat, uploads)
+      const periodKey = s.nextDue ? new Date(s.nextDue).toISOString().slice(0, 10) : 'na'
+      if (s.status === 'overdue') {
+        out.push({ id: `wh::${cat.id}::overdue::${periodKey}`, whTab: true, severity: 'error',
+          title: `${cat.name} overdue`,
+          detail: `Was due ${fmtShort(s.nextDue)}${s.last ? ` · last upload ${fmtShort(s.last.uploadedAt)}` : ' · never uploaded'}.`,
+          timestamp: (s.nextDue || new Date()).toString() === 'Invalid Date' ? new Date().toISOString() : new Date(s.nextDue).toISOString() })
+      } else if (s.status === 'due-soon') {
+        out.push({ id: `wh::${cat.id}::due::${periodKey}`, whTab: true, severity: 'warning',
+          title: `${cat.name} due soon`,
+          detail: `Due ${fmtShort(s.nextDue)} (in ${s.daysUntilDue} day${s.daysUntilDue !== 1 ? 's' : ''}).`,
+          timestamp: new Date(s.nextDue).toISOString() })
+      }
+    }
+  }
+  return out
+}
+
 // ── Weekly category (e.g. Bin Audits) ─────────────────────────────────────────
 
 const WEEK_STYLES = {

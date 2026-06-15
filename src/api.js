@@ -65,8 +65,8 @@ export async function fetchWHData() {
 }
 export const saveWHCategory   = (category)                         => post('saveWHCategory', { category })
 export const deleteWHCategory = (categoryId)                       => post('deleteWHCategory', { categoryId })
-export const whUpload         = (categoryId, files, uploadedBy, notes) =>
-  post('whUpload', { categoryId, files, uploadedBy, notes })
+export const whUpload         = (categoryId, files, uploadedBy, notes, weekKey) =>
+  post('whUpload', { categoryId, files, uploadedBy, notes, weekKey })
 export const deleteWHUpload   = (uploadId) => post('deleteWHUpload', { uploadId })
 
 // Glass pricing

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2, CheckCircle2, Circle } from 'lucide-react'
+import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2, CheckCircle2, Circle, PackageSearch } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import OrderCard from './OrderCard'
@@ -144,8 +144,10 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                     <p className="font-medium text-slate-800 dark:text-slate-200 leading-tight flex items-center gap-1.5">
                       {order.customer.company}
                       {order.note && <StickyNote size={12} className="text-amber-500 shrink-0" title={order.note} />}
+                      {order.backOrder && <PackageSearch size={12} className="text-orange-500 shrink-0" title="Awaiting stock" />}
                     </p>
                     {order.customer.contact && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{order.customer.contact}</p>}
+                    {order.backOrder && <p className="text-[10px] font-semibold text-orange-500 mt-0.5 uppercase tracking-wide">Awaiting stock</p>}
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">

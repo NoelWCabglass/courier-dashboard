@@ -4,7 +4,7 @@ import { AuthProvider, useAuth, landingTab } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
 import { useDarkMode } from './hooks/useDarkMode'
 import { useNotifications } from './hooks/useNotifications'
-import { LIVE, fetchOrders, fetchWHData, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked, setStaged as apiSetStaged } from './api'
+import { LIVE, fetchOrders, fetchWHData, updateOrder as apiUpdate, deleteOrder as apiDelete, archiveBooked, archiveOrders as apiArchiveOrders, restoreOrders, saveNote as apiSaveNote, setPacked as apiSetPacked, setStaged as apiSetStaged, setBackOrder as apiSetBackOrder } from './api'
 import { Archive } from 'lucide-react'
 import { playPing } from './ping'
 import Toasts from './components/Toasts'
@@ -31,6 +31,7 @@ function Dashboard() {
   const [history, setHistory] = useState(LIVE ? [] : mockHistory)
   const [packedIds, setPackedIds] = useState(() => new Set())
   const [stagedIds, setStagedIds] = useState(() => new Set())
+  const [backOrderIds, setBackOrderIds] = useState(() => new Set())
   const [loading, setLoading] = useState(LIVE)
   const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState(landingTab(user))
@@ -72,6 +73,7 @@ function Dashboard() {
     const ps = new Set([...orders, ...history].filter(o => o.packed).map(o => o.id))
     setPackedIds(ps)
     setStagedIds(new Set([...orders, ...history].filter(o => o.staged).map(o => o.id)))
+    setBackOrderIds(new Set([...orders].filter(o => o.backOrder).map(o => o.id)))
     // New-order detection
     const currentPs = new Set(orders.map(o => o.psNo))
     if (ping && knownPs.current) {
@@ -252,6 +254,20 @@ function Dashboard() {
     if (LIVE && order) apiSetStaged(order.psNo, willStage).catch(err => console.error('Staged update failed:', err))
   }
 
+  const toggleBackOrder = (id) => {
+    const order = orders.find(o => o.id === id)
+    if (!order) return
+    const willFlag = !backOrderIds.has(id)
+    setBackOrderIds(prev => {
+      const next = new Set(prev)
+      willFlag ? next.add(id) : next.delete(id)
+      return next
+    })
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, backOrder: willFlag } : o))
+    addLog(user, willFlag ? 'Flagged as awaiting stock' : 'Cleared awaiting stock flag', `PS ${order.psNo}`)
+    if (LIVE) apiSetBackOrder(order.psNo, willFlag).catch(err => console.error('Back-order update failed:', err))
+  }
+
   // Stage 2: dispatched → archive to History
   const dispatchOrder = (id) => {
     const order = [...orders, ...history].find(o => o.id === id)
@@ -404,6 +420,7 @@ function Dashboard() {
         onSaveNote={(note) => selectedOrder && saveOrderNote(selectedOrder.id, note)}
         onMoveToHistory={() => selectedOrder && moveToHistory([selectedOrder.id])}
         onRestore={() => selectedOrder && restoreFromHistory(selectedOrder.id)}
+        onToggleBackOrder={() => selectedOrder && toggleBackOrder(selectedOrder.id)}
         inHistory={selectedInHistory} />
 
       <Toasts toasts={toasts} remove={removeToast} />

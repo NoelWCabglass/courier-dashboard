@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive, ArrowLeft } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive, ArrowLeft, Copy, PackageSearch } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import { STATUS } from '../mockData'
@@ -31,7 +31,7 @@ function Field({ label, value, editing, onChange, placeholder, type = 'text' }) 
   )
 }
 
-export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote, onMoveToHistory, onRestore, inHistory }) {
+export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveNote, onMoveToHistory, onRestore, onToggleBackOrder, inHistory }) {
   const { user, perm } = useAuth()
   const canEdit = perm('orders', 'edit')
   const open = !!order
@@ -44,6 +44,15 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
   const [editItems, setEditItems] = useState(null)
   const [noteDraft, setNoteDraft] = useState('')
   const [noteDirty, setNoteDirty] = useState(false)
+  const [waybillCopied, setWaybillCopied] = useState(false)
+
+  const copyWaybill = useCallback(() => {
+    if (!order?.waybillNo) return
+    navigator.clipboard.writeText(order.waybillNo).then(() => {
+      setWaybillCopied(true)
+      setTimeout(() => setWaybillCopied(false), 2000)
+    })
+  }, [order?.waybillNo])
 
   useEffect(() => {
     setEditing(false); setConfirmDelete(false)
@@ -391,9 +400,20 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                   <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Waybill</h3>
                   <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 space-y-3">
                     {order.waybillNo && (
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-slate-500 dark:text-slate-400">Waybill No</span>
-                        <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{order.waybillNo}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{order.waybillNo}</span>
+                          <button
+                            onClick={copyWaybill}
+                            title="Copy waybill number"
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border transition-all
+                              ${waybillCopied
+                                ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400'
+                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-slate-300 hover:text-slate-700'}`}>
+                            {waybillCopied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy</>}
+                          </button>
+                        </div>
                       </div>
                     )}
                     <div className="flex gap-2 flex-wrap">
@@ -420,6 +440,26 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                   <button onClick={() => { if (confirm(`Restore ${order.psNo} back to Orders?`)) onRestore() }}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:border-brand hover:bg-brand/5 transition-colors">
                     <ArrowLeft size={15} /> Restore to Orders
+                  </button>
+                </section>
+              )}
+
+              {/* Back-order flag */}
+              {canEdit && !inHistory && onToggleBackOrder && (
+                <section>
+                  <button
+                    onClick={onToggleBackOrder}
+                    className={`w-full flex items-center justify-between gap-3 py-2.5 px-4 rounded-xl text-sm font-medium border transition-colors
+                      ${order.backOrder
+                        ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-orange-300 hover:bg-orange-50/50 dark:hover:border-orange-700'}`}>
+                    <span className="flex items-center gap-2">
+                      <PackageSearch size={15} />
+                      {order.backOrder ? 'Awaiting stock' : 'Mark as awaiting stock'}
+                    </span>
+                    {order.backOrder && (
+                      <span className="text-xs font-medium text-orange-500 dark:text-orange-400">Click to clear</span>
+                    )}
                   </button>
                 </section>
               )}

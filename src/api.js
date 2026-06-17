@@ -50,6 +50,7 @@ export const restoreOrders    = (psNumbers)          => post('restoreOrders', { 
 export const saveNote         = (psNo, note)         => post('saveNote', { psNo, note })
 export const setPacked        = (psNo, packed)       => post('setPacked', { psNo, packed })
 export const setStaged        = (psNo, staged)       => post('setStaged', { psNo, staged })
+export const setBackOrder     = (psNo, backOrder)    => post('setBackOrder', { psNo, backOrder })
 export const updateOrder      = (psNo, changes)      => post('updateOrder', { psNo, changes })
 export const deleteOrder      = (psNo)               => post('deleteOrder', { psNo })
 export const markDispatched   = (psNo, dispatched)   => post('markDispatched', { psNo, dispatched })

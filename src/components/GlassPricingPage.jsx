@@ -157,6 +157,7 @@ export default function GlassPricingPage() {
 
   const [weightOverride, setWeightOverride] = useState(false)
   const [manualWt, setManualWt] = useState('')
+  const [note, setNote] = useState('')
 
   useEffect(() => {
     if (!LIVE) return
@@ -258,6 +259,7 @@ export default function GlassPricingPage() {
           <tr class="total"><td colspan="2">TOTAL (incl. VAT)</td><td class="right">${fmtR(incl)}</td></tr>
         </tbody>
       </table>
+      ${note.trim() ? `<div class="validity"><strong>Note</strong>${note.replace(/\n/g, '<br>')}</div>` : ''}
       <div class="foot"><span>CabGlass — Internal use only</span><span>Printed ${d}</span></div>
     `)
   }
@@ -362,6 +364,18 @@ export default function GlassPricingPage() {
               <div><span className="text-[11px] text-slate-400">Rate per 1 000 cm³</span><input type="number" step="0.5" className={inputCls} value={rvol} onChange={e => setRvol(e.target.value)} /></div>
             </div>
             <p className="text-[11px] text-slate-400">Billed on greater of actual vs volumetric (cm³ ÷ 5 000). Min R 200/leg.</p>
+          </div>
+
+          {/* Note */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+            <label className={labelCls}>Note (optional — printed on pricing sheet)</label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              rows={3}
+              placeholder="e.g. Customer reference, special instructions…"
+              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#FECD28] focus:ring-1 focus:ring-[#FECD28]/30 resize-none leading-relaxed placeholder:text-slate-300 dark:placeholder:text-slate-600"
+            />
           </div>
 
           {/* Tier table */}

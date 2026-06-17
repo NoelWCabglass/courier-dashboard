@@ -83,7 +83,28 @@ When back-ordered stock arrives to complete the order:
 2. Edit the quantities again to remove any zero-quantity lines or items that have already been dispatched.
 3. Refresh the quotes and complete the booking.
 
-**Important:** Always ensure that the booking contents match the invoice exactly.`
+**Important:** Always ensure that the booking contents match the invoice exactly.
+
+## Pricing Calculator
+
+The Pricing page generates an indicative selling price for glass based on glass type, dimensions, weight, buy-in cost, and shipping method.
+
+### How to use it
+
+1. Select the **glass type** (flat toughened, curved toughened, or laminated).
+2. Enter the **glass dimensions** in cm (length, width, thickness).
+3. The glass weight is calculated automatically from the dimensions and density. Click **override** to enter a manual weight if needed.
+4. Enter the **buy-in cost** (excluding shipping).
+5. Select the **shipment type** — single, double, or supplier direct.
+6. The calculator will display the selling price, shipping estimate, gross profit %, and total to customer.
+
+### Adding a note
+
+A **Note** field sits below the shipment section. Use it to record a customer reference, special instructions, or any other relevant detail. The note appears on the printed pricing sheet but is not saved — it clears when you leave the page.
+
+### Printing
+
+Click **Print pricing sheet** to open a formatted internal pricing document. For laminated glass, a separate **Print cutting list** button generates the shutterply crate cutting list.`
 
 // ── Tiny markdown renderer ──
 // Supports: # / ## / ### headings, - · * · ● bullet lists, 1. ordered lists,

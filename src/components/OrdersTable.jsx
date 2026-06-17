@@ -198,11 +198,15 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                   </td>
 
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <Toggle checked={order.approved} onChange={v => canEdit && onUpdate(order.id, { approved: v })} disabled={!canEdit || terminal} />
+                    <div title={!order.staged && !terminal ? 'Mark as picked first' : undefined}>
+                      <Toggle checked={order.approved} onChange={v => canEdit && onUpdate(order.id, { approved: v })} disabled={!canEdit || terminal || !order.staged} />
+                    </div>
                   </td>
 
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <Toggle checked={order.buyLabel} onChange={v => canEdit && onUpdate(order.id, { buyLabel: v })} disabled={!canEdit || terminal || !order.approved} />
+                    <div title={!order.staged && !terminal ? 'Mark as picked first' : undefined}>
+                      <Toggle checked={order.buyLabel} onChange={v => canEdit && onUpdate(order.id, { buyLabel: v })} disabled={!canEdit || terminal || !order.approved || !order.staged} />
+                    </div>
                   </td>
 
                   {!inHistory && (

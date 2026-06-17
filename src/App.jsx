@@ -250,6 +250,7 @@ function Dashboard() {
       willStage ? next.add(id) : next.delete(id)
       return next
     })
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, staged: willStage } : o))
     if (order) addLog(user, willStage ? 'Marked picked (staged)' : 'Marked not picked (staged)', `PS ${order.psNo}`)
     if (LIVE && order) apiSetStaged(order.psNo, willStage).catch(err => console.error('Staged update failed:', err))
   }

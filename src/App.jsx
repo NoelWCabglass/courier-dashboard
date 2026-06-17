@@ -20,6 +20,7 @@ import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
 import WHUploadsPage, { buildWHNotifications } from './components/WHUploadsPage'
 import GlassPricingPage from './components/GlassPricingPage'
+import UserGuidePage from './components/UserGuidePage'
 
 function Dashboard() {
   const { user, can, perm } = useAuth()
@@ -359,6 +360,7 @@ function Dashboard() {
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
             {activeTab === 'pricing'  && <GlassPricingPage />}
+            {activeTab === 'userguide' && <UserGuidePage />}
             {activeTab === 'staged' && (
               <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} onSaveNote={saveOrderNote} />
             )}

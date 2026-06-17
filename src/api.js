@@ -79,4 +79,15 @@ export async function fetchGlassPricing() {
 }
 export const saveGlassPricing = (pricing) => post('saveGlassPricing', { pricing })
 
+// User Guide (editable help page)
+export async function fetchUserGuide() {
+  const url = `${API_URL}?action=getUserGuide&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load user guide')
+  return data.guide
+}
+// payload may contain { content } and/or { editorUsername }, plus updatedBy
+export const saveUserGuide = (payload) => post('saveUserGuide', payload)
+
 export { LIVE }

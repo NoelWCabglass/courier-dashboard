@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize, ChevronDown, ExternalLink } from 'lucide-react'
+import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import NotificationBell from './NotificationBell'
-
-const PP_URL = 'https://drive.google.com/drive/u/0/folders/1QSfbreN1-gr1uJRWVyr0P9s0yn0kK0Ii'
 
 export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark, notifications }) {
   const { user, logout, perm } = useAuth()
@@ -40,7 +38,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
 
   const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
   const warehouseActive = activeTab === 'staged' || activeTab === 'dispatch' || activeTab === 'wh'
-  const generalActive = activeTab === 'pricing'
+  const generalActive = activeTab === 'pricing' || activeTab === 'userguide'
 
   // Items that live under the Warehouse dropdown (non-dispatch roles)
   const warehouseItems = [
@@ -155,7 +153,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
               </div>
             )}
 
-            {/* General dropdown — P&P (external, always) + Pricing (gated) */}
+            {/* General dropdown — User Guide (always) + Pricing (gated) */}
             {(
               <div className="relative">
                 <button
@@ -168,15 +166,9 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
 
                 {openMenu === 'general' && (
                   <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[140px] z-[100]">
-                    <a
-                      href={PP_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setOpenMenu(null)}
-                      className={itemCls(false)}
-                    >
-                      P&amp;P <ExternalLink size={13} className="opacity-60" />
-                    </a>
+                    <button onClick={() => goTab('userguide')} className={itemCls(activeTab === 'userguide')}>
+                      User Guide
+                    </button>
                     {generalItems.map(({ key, label }) => (
                       <button key={key} onClick={() => goTab(key)} className={itemCls(activeTab === key)}>
                         {label}

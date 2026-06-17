@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive, ArrowLeft, Copy, PackageSearch } from 'lucide-react'
+import { X, ExternalLink, Phone, Mail, MapPin, Package, RefreshCw, AlertTriangle, Pencil, Plus, Trash2, Check, Archive, ArrowLeft, Copy, PackageSearch, Clock } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import { STATUS } from '../mockData'
@@ -81,6 +81,12 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
 
   const cheaper = order?.tcgQuote != null && order?.epxQuote != null
     ? (order.tcgQuote <= order.epxQuote ? 'TCG' : 'EPX') : null
+
+  const QUOTE_STALE_DAYS = 7
+  const quoteStale = order && (order.tcgQuote != null || order.epxQuote != null)
+    && ![STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED, STATUS.TRIANGLE].includes(order.status)
+    && order.dateReceived
+    && (Date.now() - new Date(order.dateReceived).getTime()) / (1000 * 60 * 60 * 24) > QUOTE_STALE_DAYS
 
   const items = editing ? editItems : order?.items ?? []
 
@@ -332,20 +338,34 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
               {/* Quotes */}
               <section>
                 <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Quotes</h3>
+                {quoteStale && (
+                  <div className="flex items-start gap-2 mb-3 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                    <Clock size={14} className="text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300 leading-snug">
+                      Quotes are over {QUOTE_STALE_DAYS} days old — rates may have changed. Refresh before booking.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   {[{ key: 'TCG', value: order.tcgQuote, rf: 'tcgRefresh' }, { key: 'EPX', value: order.epxQuote, rf: 'epxRefresh' }].map(({ key, value, rf }) => (
-                    <div key={key} className={`rounded-xl border p-3.5 ${cheaper === key ? 'border-brand' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900/40'}`}
-                      style={cheaper === key ? { backgroundColor: 'rgba(254,205,40,0.1)' } : {}}>
+                    <div key={key} className={`rounded-xl border p-3.5 ${
+                      quoteStale && value != null
+                        ? 'border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-900/10'
+                        : cheaper === key
+                          ? 'border-brand'
+                          : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900/40'}`}
+                      style={!quoteStale && cheaper === key ? { backgroundColor: 'rgba(254,205,40,0.1)' } : {}}>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{key}</span>
-                        {cheaper === key && <span className="text-xs font-bold text-[#111111] rounded-full px-2 py-0.5" style={{ backgroundColor: '#FECD28' }}>Cheapest</span>}
+                        {!quoteStale && cheaper === key && <span className="text-xs font-bold text-[#111111] rounded-full px-2 py-0.5" style={{ backgroundColor: '#FECD28' }}>Cheapest</span>}
+                        {quoteStale && value != null && <Clock size={12} className="text-amber-400" />}
                       </div>
-                      <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                      <p className={`text-xl font-bold ${quoteStale && value != null ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-100'}`}>
                         {fmt(value) ?? <span className="text-slate-300 dark:text-slate-600 text-base">No quote</span>}
                       </p>
                       {canEdit && !terminal && (
                         <button onClick={() => onUpdate({ [rf]: true })}
-                          className="mt-2.5 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                          className={`mt-2.5 flex items-center gap-1 text-xs ${quoteStale && value != null ? 'text-amber-600 dark:text-amber-400 font-semibold hover:text-amber-700' : 'text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400'}`}>
                           <RefreshCw size={11} /> Refresh
                         </button>
                       )}

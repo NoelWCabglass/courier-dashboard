@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2, CheckCircle2, Circle, PackageSearch } from 'lucide-react'
+import { ExternalLink, AlertTriangle, ChevronRight, StickyNote, X, Archive, Trash2, CheckCircle2, Circle, PackageSearch, Clock } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import Toggle from './Toggle'
 import OrderCard from './OrderCard'
@@ -9,6 +9,16 @@ import { getOrderIssues } from '../validation'
 
 const fmt = (n) => n != null ? `R ${Number(n).toFixed(2)}` : '—'
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+const QUOTE_STALE_DAYS = 7
+const isQuoteStale = (order) => {
+  if (!order.dateReceived) return false
+  if (order.tcgQuote == null && order.epxQuote == null) return false
+  // Don't warn on terminal statuses — quote age is irrelevant once booked
+  if ([STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED, STATUS.TRIANGLE].includes(order.status)) return false
+  const ageDays = (Date.now() - new Date(order.dateReceived).getTime()) / (1000 * 60 * 60 * 24)
+  return ageDays > QUOTE_STALE_DAYS
+}
 
 const COURIER_COLORS = {
   TCG:      'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800',
@@ -114,6 +124,7 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
               const selected = selectedId === order.id
               const cheaper = order.tcgQuote != null && order.epxQuote != null
                 ? (order.tcgQuote <= order.epxQuote ? 'TCG' : 'EPX') : null
+              const stale = isQuoteStale(order)
 
               return (
                 <tr key={order.id} onClick={() => onSelect(order.id)}
@@ -156,11 +167,13 @@ export default function OrdersTable({ orders, selectedId, onSelect, onUpdate, on
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`font-medium ${cheaper === 'TCG' ? 'text-green-600 dark:text-green-400' : 'text-slate-700 dark:text-slate-300'}`}>{fmt(order.tcgQuote)}</span>
+                    <span className={`font-medium ${stale ? 'text-amber-500 dark:text-amber-400' : cheaper === 'TCG' ? 'text-green-600 dark:text-green-400' : 'text-slate-700 dark:text-slate-300'}`}>{fmt(order.tcgQuote)}</span>
+                    {stale && order.tcgQuote != null && <Clock size={10} className="inline ml-1 text-amber-400 relative -top-px" />}
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`font-medium ${cheaper === 'EPX' ? 'text-green-600 dark:text-green-400' : 'text-slate-700 dark:text-slate-300'}`}>{fmt(order.epxQuote)}</span>
+                    <span className={`font-medium ${stale ? 'text-amber-500 dark:text-amber-400' : cheaper === 'EPX' ? 'text-green-600 dark:text-green-400' : 'text-slate-700 dark:text-slate-300'}`}>{fmt(order.epxQuote)}</span>
+                    {stale && order.epxQuote != null && <Clock size={10} className="inline ml-1 text-amber-400 relative -top-px" />}
                   </td>
 
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>

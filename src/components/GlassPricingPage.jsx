@@ -97,29 +97,29 @@ function computeAll({ glassType, shipType, lenCm, widCm, thkCm, glassWt, cost, r
 
 // ── Print sheets (open in a clean new window) ──
 const PRINT_CSS = `
-  @page { margin: 14mm 18mm; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color:#000; font-size:10.5pt; margin:0; }
-  .hdr { display:flex; justify-content:space-between; align-items:center; border-bottom:2.5px solid #000; padding-bottom:10pt; margin-bottom:14pt; }
-  .hdr-left { display:flex; align-items:center; gap:10pt; }
-  .hdr-logo { height:38pt; width:auto; display:block; }
-  .hdr-text .brand { font-size:19pt; font-weight:800; letter-spacing:-.02em; color:#111; line-height:1; }
-  .hdr-text .sub { font-size:8.5pt; color:#555; margin-top:2pt; }
-  .meta { font-size:9pt; text-align:right; color:#333; line-height:1.9; }
-  .stitle { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#555; margin:12pt 0 5pt; border-bottom:1px solid #bbb; padding-bottom:2.5pt; }
-  table { width:100%; border-collapse:collapse; font-size:10pt; margin-bottom:4pt; page-break-inside:avoid; }
-  th { text-align:left; padding:5pt 8pt; background:#efefef; border:1px solid #ccc; font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
-  td { padding:7pt 8pt; border:1px solid #ddd; vertical-align:middle; }
+  @page { margin: 12mm 16mm; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color:#000; font-size:9.5pt; margin:0; }
+  .hdr { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:7pt; margin-bottom:10pt; }
+  .hdr-left { display:flex; align-items:center; gap:8pt; }
+  .hdr-logo { height:30pt; width:auto; display:block; }
+  .hdr-text .brand { font-size:16pt; font-weight:800; letter-spacing:-.02em; color:#111; line-height:1; }
+  .hdr-text .sub { font-size:7.5pt; color:#555; margin-top:1.5pt; }
+  .meta { font-size:8pt; text-align:right; color:#333; line-height:1.7; }
+  .stitle { font-size:7pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#555; margin:8pt 0 4pt; border-bottom:1px solid #bbb; padding-bottom:2pt; }
+  table { width:100%; border-collapse:collapse; font-size:9pt; margin-bottom:3pt; page-break-inside:avoid; }
+  th { text-align:left; padding:4pt 7pt; background:#efefef; border:1px solid #ccc; font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  td { padding:5pt 7pt; border:1px solid #ddd; vertical-align:middle; }
   tr:nth-child(even) td { background:#fafafa; }
   .right { text-align:right; }
   .total { page-break-inside:avoid; }
-  .total td { background:#111 !important; color:#fff !important; font-weight:700; font-size:11.5pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .total td { background:#111 !important; color:#fff !important; font-weight:700; font-size:10pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .subtotal td { background:#f0ede6 !important; font-weight:600; }
   .pricing-wrap { page-break-inside:avoid; }
-  .cbox { width:10pt; height:10pt; border:1.5px solid #333; display:inline-block; }
-  .totals { margin-top:8pt; display:flex; gap:20pt; flex-wrap:wrap; font-size:9.5pt; }
-  .note-box { margin-top:12pt; padding:8pt 10pt; border:1pt solid #ccc; border-radius:3pt; font-size:9.5pt; background:#fafafa; page-break-inside:avoid; }
-  .note-box strong { display:block; margin-bottom:3pt; font-size:10pt; }
-  .foot { margin-top:16pt; padding-top:7pt; border-top:1px solid #ccc; font-size:8pt; color:#999; display:flex; justify-content:space-between; }
+  .cbox { width:9pt; height:9pt; border:1.5px solid #333; display:inline-block; }
+  .totals { margin-top:6pt; display:flex; gap:16pt; flex-wrap:wrap; font-size:8.5pt; }
+  .note-line { margin-top:7pt; font-size:8.5pt; color:#333; border-top:1px solid #ddd; padding-top:5pt; }
+  .note-line strong { font-weight:700; margin-right:4pt; }
+  .foot { margin-top:10pt; padding-top:6pt; border-top:1px solid #ccc; font-size:7.5pt; color:#999; display:flex; justify-content:space-between; }
 `
 
 // Fetch the logo once and return a data-URL so it embeds cleanly in the popup window.
@@ -285,7 +285,7 @@ export default function GlassPricingPage() {
           </tbody>
         </table>
       </div>
-      ${note.trim() ? `<div class="note-box"><strong>Note</strong>${note.replace(/\n/g, '<br>')}</div>` : ''}
+      ${note.trim() ? `<div class="note-line"><strong>Note:</strong>${note.replace(/\n/g, ' ')}</div>` : ''}
       <div class="foot"><span>CabGlass — Internal use only</span><span>Printed ${d}</span></div>
     `)
   }

@@ -97,34 +97,59 @@ function computeAll({ glassType, shipType, lenCm, widCm, thkCm, glassWt, cost, r
 
 // ── Print sheets (open in a clean new window) ──
 const PRINT_CSS = `
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color:#000; padding:20mm; font-size:11pt; }
-  .hdr { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid #000; padding-bottom:8pt; margin-bottom:16pt; }
-  .title { font-size:16pt; font-weight:700; } .sub { font-size:9pt; color:#555; margin-top:3pt; }
-  .meta { font-size:9pt; text-align:right; color:#333; line-height:1.8; }
-  .brand { font-size:20pt; font-weight:800; letter-spacing:-.02em; color:#111; }
-  .stitle { font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#555; margin:14pt 0 6pt; border-bottom:1px solid #ccc; padding-bottom:3pt; }
-  table { width:100%; border-collapse:collapse; font-size:11pt; margin-bottom:4pt; }
-  th { text-align:left; padding:5pt 8pt; background:#f0f0f0; border:1px solid #ccc; font-size:9pt; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
-  td { padding:8pt; border:1px solid #ddd; vertical-align:middle; }
+  @page { margin: 14mm 18mm; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color:#000; font-size:10.5pt; margin:0; }
+  .hdr { display:flex; justify-content:space-between; align-items:center; border-bottom:2.5px solid #000; padding-bottom:10pt; margin-bottom:14pt; }
+  .hdr-left { display:flex; align-items:center; gap:10pt; }
+  .hdr-logo { height:38pt; width:auto; display:block; }
+  .hdr-text .brand { font-size:19pt; font-weight:800; letter-spacing:-.02em; color:#111; line-height:1; }
+  .hdr-text .sub { font-size:8.5pt; color:#555; margin-top:2pt; }
+  .meta { font-size:9pt; text-align:right; color:#333; line-height:1.9; }
+  .stitle { font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#555; margin:12pt 0 5pt; border-bottom:1px solid #bbb; padding-bottom:2.5pt; }
+  table { width:100%; border-collapse:collapse; font-size:10pt; margin-bottom:4pt; page-break-inside:avoid; }
+  th { text-align:left; padding:5pt 8pt; background:#efefef; border:1px solid #ccc; font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  td { padding:7pt 8pt; border:1px solid #ddd; vertical-align:middle; }
   tr:nth-child(even) td { background:#fafafa; }
   .right { text-align:right; }
-  .total td { background:#1A1814 !important; color:#fff !important; font-weight:700; font-size:12pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .subtotal td { background:#f5f3ee !important; font-weight:600; }
-  .cbox { width:11pt; height:11pt; border:1.5px solid #333; display:inline-block; }
-  .totals { margin-top:10pt; display:flex; gap:24pt; flex-wrap:wrap; font-size:10pt; }
-  .validity { margin-top:14pt; padding:10pt 12pt; border:1pt solid #ccc; border-radius:4pt; font-size:10pt; background:#fafafa; }
-  .validity strong { display:block; margin-bottom:4pt; font-size:11pt; }
-  .sign { margin-top:24pt; display:grid; grid-template-columns:1fr 1fr; gap:30pt; }
-  .signline { border-top:1pt solid #000; padding-top:4pt; font-size:9pt; color:#555; margin-top:30pt; }
-  .foot { margin-top:20pt; padding-top:8pt; border-top:1px solid #ccc; font-size:8pt; color:#888; display:flex; justify-content:space-between; }
+  .total { page-break-inside:avoid; }
+  .total td { background:#111 !important; color:#fff !important; font-weight:700; font-size:11.5pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .subtotal td { background:#f0ede6 !important; font-weight:600; }
+  .pricing-wrap { page-break-inside:avoid; }
+  .cbox { width:10pt; height:10pt; border:1.5px solid #333; display:inline-block; }
+  .totals { margin-top:8pt; display:flex; gap:20pt; flex-wrap:wrap; font-size:9.5pt; }
+  .note-box { margin-top:12pt; padding:8pt 10pt; border:1pt solid #ccc; border-radius:3pt; font-size:9.5pt; background:#fafafa; page-break-inside:avoid; }
+  .note-box strong { display:block; margin-bottom:3pt; font-size:10pt; }
+  .foot { margin-top:16pt; padding-top:7pt; border-top:1px solid #ccc; font-size:8pt; color:#999; display:flex; justify-content:space-between; }
 `
-function brandHeader(rightMeta) {
-  const logo = `${window.location.origin}/Cabglass_logo_PNG.avif`
+
+// Fetch the logo once and return a data-URL so it embeds cleanly in the popup window.
+async function getLogoDataUrl() {
+  try {
+    const res = await fetch('/Cabglass_logo_PNG.avif')
+    const blob = await res.blob()
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+function buildHeader(logoDataUrl, rightMeta) {
+  const logoHtml = logoDataUrl
+    ? `<img src="${logoDataUrl}" class="hdr-logo" alt="CabGlass">`
+    : ''
   return `
     <div class="hdr">
-      <div style="display:flex;align-items:center;gap:12pt">
-        <img src="${logo}" alt="CabGlass" style="height:34pt;width:auto" onerror="this.style.display='none'">
-        <div><div class="brand">CabGlass</div><div class="sub">Agricultural &amp; Construction Machine Glazing</div></div>
+      <div class="hdr-left">
+        ${logoHtml}
+        <div class="hdr-text">
+          <div class="brand">CabGlass</div>
+          <div class="sub">Agricultural &amp; Construction Machine Glazing</div>
+        </div>
       </div>
       <div class="meta">${rightMeta}</div>
     </div>`
@@ -135,7 +160,7 @@ function openPrint(title, bodyHtml) {
   if (!w) { alert('Pop-up blocked — allow pop-ups to print.'); return }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>${PRINT_CSS}</style></head><body>${bodyHtml}</body></html>`)
   w.document.close(); w.focus()
-  setTimeout(() => w.print(), 350)
+  setTimeout(() => w.print(), 400)
 }
 
 export default function GlassPricingPage() {
@@ -194,15 +219,16 @@ export default function GlassPricingPage() {
   // ── Print builders ──
   const printDate = () => new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' })
 
-  const printCuttingList = () => {
+  const printCuttingList = async () => {
     if (!calc.crate) return
     const d = printDate()
+    const logoDataUrl = await getLogoDataUrl()
     const rows = calc.crate.cuts.map(cut => {
       const [a, b] = cut.dim.replace(' mm', '').split('×').map(s => s.trim())
       return `<tr><td style="text-align:center"><span class="cbox"></span></td><td>${cut.label}</td><td><strong>${a}</strong></td><td><strong>${b}</strong></td><td>18 mm</td><td style="text-align:center"><strong>${cut.qty}</strong></td></tr>`
     }).join('')
     openPrint('Crate Cutting List', `
-      ${brandHeader(`Crate Cutting List<br>Date: ${d}<br>Glass: Laminated · ${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm · ${calc.gw.toFixed(2)} kg`)}
+      ${buildHeader(logoDataUrl, `Crate Cutting List<br>Date: ${d}<br>Glass: Laminated · ${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm · ${calc.gw.toFixed(2)} kg`)}
       <div class="stitle">Crate external dimensions</div>
       <table><tbody>
         <tr><td>Length</td><td><strong>${calc.pkgL} cm</strong></td><td>Depth (breadth)</td><td><strong>${calc.pkgW} cm</strong></td><td>Height</td><td><strong>${calc.pkgH} cm</strong></td></tr>
@@ -222,8 +248,9 @@ export default function GlassPricingPage() {
     `)
   }
 
-  const printQuote = () => {
+  const printQuote = async () => {
     const d = printDate()
+    const logoDataUrl = await getLogoDataUrl()
     const typeLabel = TYPE_LABELS[glassType]
     const shipLabel = calc.isZero ? 'Supplier delivers direct' : calc.legs === 2 ? 'Double shipment (agent → depot → customer)' : 'Single shipment'
     const packLabel = isLam ? `Timber crate — ${calc.pkgL}×${calc.pkgW}×${calc.pkgH} cm` : `Aerothene edge wrap (flat) — ${calc.pkgL}×${calc.pkgW}×${calc.pkgH} cm`
@@ -233,33 +260,32 @@ export default function GlassPricingPage() {
     const vat = r(calc.totalSell * 0.15, 2)
     const incl = r(calc.totalSell * 1.15, 2)
     openPrint('Internal Pricing Sheet', `
-      ${brandHeader(`Internal Pricing Sheet<br>Date: ${d}`)}
+      ${buildHeader(logoDataUrl, `Internal Pricing Sheet<br>Date: ${d}`)}
       <div class="stitle">Glass specification</div>
       <table><tbody>
-        <tr><td>Glass type</td><td><strong>${typeLabel}</strong></td></tr>
+        <tr><td style="width:38%">Glass type</td><td><strong>${typeLabel}</strong></td></tr>
         <tr><td>Dimensions (L × W × T)</td><td><strong>${calc.Lc} × ${calc.Wc} × ${calc.Tc} cm</strong></td></tr>
         <tr><td>Glass weight</td><td>${calc.gw.toFixed(2)} kg</td></tr>
-      </tbody></table>
-      <div class="stitle">Packaging</div>
-      <table><tbody>
         <tr><td>Pack method</td><td>${isLam ? '18mm shutterply timber crate, 150mm breadth' : 'Aerothene (bubble-wrap) edge protection, laid flat'}</td></tr>
         <tr><td>Packed dimensions</td><td>${packLabel}</td></tr>
         <tr><td>Total packed weight</td><td>${calc.pkgWt.toFixed(2)} kg</td></tr>
       </tbody></table>
       <div class="stitle">Pricing</div>
-      <table>
-        <thead><tr><th>Item</th><th>Notes</th><th class="right">Amount (ZAR)</th></tr></thead>
-        <tbody>
-          <tr><td>Buy-in cost</td><td>Goods excl. freight</td><td class="right">${fmtR(cost)}</td></tr>
-          <tr><td>Markup</td><td>${calc.activeTier.pct}% on cost</td><td class="right">${fmtR(calc.markupAmt)}</td></tr>
-          <tr><td>Glass — ${typeLabel}</td><td>Selling price (goods)</td><td class="right">${fmtR(calc.sellPrice)}</td></tr>
-          ${shipRow}
-          <tr class="subtotal"><td colspan="2"><strong>Total (excl. VAT)</strong></td><td class="right"><strong>${fmtR(calc.totalSell)}</strong></td></tr>
-          <tr><td colspan="2">VAT @ 15%</td><td class="right">${fmtR(vat)}</td></tr>
-          <tr class="total"><td colspan="2">TOTAL (incl. VAT)</td><td class="right">${fmtR(incl)}</td></tr>
-        </tbody>
-      </table>
-      ${note.trim() ? `<div class="validity"><strong>Note</strong>${note.replace(/\n/g, '<br>')}</div>` : ''}
+      <div class="pricing-wrap">
+        <table>
+          <thead><tr><th style="width:28%">Item</th><th>Notes</th><th class="right" style="width:22%">Amount (ZAR)</th></tr></thead>
+          <tbody>
+            <tr><td>Buy-in cost</td><td>Goods excl. freight</td><td class="right">${fmtR(cost)}</td></tr>
+            <tr><td>Markup</td><td>${calc.activeTier.pct}% on cost</td><td class="right">${fmtR(calc.markupAmt)}</td></tr>
+            <tr><td>Glass — ${typeLabel}</td><td>Selling price (goods)</td><td class="right">${fmtR(calc.sellPrice)}</td></tr>
+            ${shipRow}
+            <tr class="subtotal"><td colspan="2"><strong>Total (excl. VAT)</strong></td><td class="right"><strong>${fmtR(calc.totalSell)}</strong></td></tr>
+            <tr><td colspan="2">VAT @ 15%</td><td class="right">${fmtR(vat)}</td></tr>
+            <tr class="total"><td colspan="2">TOTAL (incl. VAT)</td><td class="right">${fmtR(incl)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      ${note.trim() ? `<div class="note-box"><strong>Note</strong>${note.replace(/\n/g, '<br>')}</div>` : ''}
       <div class="foot"><span>CabGlass — Internal use only</span><span>Printed ${d}</span></div>
     `)
   }

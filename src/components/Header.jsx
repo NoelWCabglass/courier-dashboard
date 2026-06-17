@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize, ChevronDown } from 'lucide-react'
+import { RefreshCw, LogOut, Moon, Sun, Maximize, Minimize, ChevronDown, ExternalLink } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import NotificationBell from './NotificationBell'
+
+const PP_URL = 'https://drive.google.com/drive/u/0/folders/1QSfbreN1-gr1uJRWVyr0P9s0yn0kK0Ii'
 
 export default function Header({ activeTab, setActiveTab, onRefresh, refreshing, dark, toggleDark, notifications }) {
   const { user, logout, perm } = useAuth()
   const [isFs, setIsFs] = useState(false)
-  const [ordersOpen, setOrdersOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const [openMenu, setOpenMenu] = useState(null) // 'orders' | 'warehouse' | 'general' | null
+  const navRef = useRef(null)
 
   useEffect(() => {
     const onFs = () => setIsFs(!!document.fullscreenElement)
@@ -15,11 +17,11 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     return () => document.removeEventListener('fullscreenchange', onFs)
   }, [])
 
-  // Close dropdown when clicking outside
+  // Close any open dropdown when clicking outside the nav
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOrdersOpen(false)
+      if (navRef.current && !navRef.current.contains(e.target)) {
+        setOpenMenu(null)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -34,20 +36,36 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
     }
   }
 
-  const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
+  const isDispatchRole = user?.role === 'dispatch'
 
-  const flatTabs = [
+  const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
+  const warehouseActive = activeTab === 'staged' || activeTab === 'dispatch' || activeTab === 'wh'
+  const generalActive = activeTab === 'pricing'
+
+  // Items that live under the Warehouse dropdown (non-dispatch roles)
+  const warehouseItems = [
     { key: 'staged',   label: 'Staged',     show: perm('staged', 'view') },
     { key: 'dispatch', label: 'Dispatch',   show: perm('dispatch', 'view') },
     { key: 'wh',       label: 'WH Uploads', show: perm('wh', 'view') },
-    { key: 'pricing',  label: 'Pricing',    show: perm('pricing', 'view') },
-    { key: 'admin',    label: 'Admin',      show: perm('admin', 'view') },
+  ].filter(t => t.show)
+
+  // Items under the General dropdown
+  const generalItems = [
+    { key: 'pricing', label: 'Pricing', show: perm('pricing', 'view') },
   ].filter(t => t.show)
 
   const btnCls = (active) =>
     `px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150 ${
       active ? '' : 'text-black/50 hover:text-black hover:bg-black/10'
     }`
+
+  const itemCls = (active) =>
+    `w-full text-left px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2
+      ${active
+        ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
+        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`
+
+  const goTab = (key) => { setActiveTab(key); setOpenMenu(null) }
 
   return (
     <header style={{ backgroundColor: '#FECD28' }} className="sticky top-0 z-30 shadow-md overflow-visible">
@@ -58,48 +76,33 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
             <img src="/Cabglass_logo_PNG.avif" alt="CabGlass" className="h-8 w-auto" style={{ filter: 'brightness(0)' }} />
           </div>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1" ref={navRef}>
 
-            {/* Orders dropdown */}
+            {/* Orders dropdown — unchanged */}
             {(perm('orders', 'view') || perm('upload', 'view')) && (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative">
                 <button
-                  onClick={() => setOrdersOpen(o => !o)}
+                  onClick={() => setOpenMenu(m => m === 'orders' ? null : 'orders')}
                   style={ordersActive ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
                   className={`flex items-center gap-1 ${btnCls(ordersActive)}`}
                 >
-                  Orders <ChevronDown size={13} className={`transition-transform duration-150 ${ordersOpen ? 'rotate-180' : ''}`} />
+                  Orders <ChevronDown size={13} className={`transition-transform duration-150 ${openMenu === 'orders' ? 'rotate-180' : ''}`} />
                 </button>
 
-                {ordersOpen && (
+                {openMenu === 'orders' && (
                   <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[130px] z-[100]">
                     {perm('orders', 'view') && (
-                      <button
-                        onClick={() => { setActiveTab('orders'); setOrdersOpen(false) }}
-                        className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
-                          ${activeTab === 'orders'
-                            ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
-                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                      <button onClick={() => goTab('orders')} className={itemCls(activeTab === 'orders')}>
                         Orders
                       </button>
                     )}
                     {perm('upload', 'view') && (
-                      <button
-                        onClick={() => { setActiveTab('upload'); setOrdersOpen(false) }}
-                        className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
-                          ${activeTab === 'upload'
-                            ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
-                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                      <button onClick={() => goTab('upload')} className={itemCls(activeTab === 'upload')}>
                         Upload
                       </button>
                     )}
                     {perm('orders', 'view') && (
-                      <button
-                        onClick={() => { setActiveTab('history'); setOrdersOpen(false) }}
-                        className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors
-                          ${activeTab === 'history'
-                            ? 'bg-[#FECD28]/20 text-[#111111] dark:text-white font-semibold'
-                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                      <button onClick={() => goTab('history')} className={itemCls(activeTab === 'history')}>
                         History
                       </button>
                     )}
@@ -108,20 +111,92 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
               </div>
             )}
 
-            {/* Flat tabs */}
-            {flatTabs.map(({ key, label }) => {
-              const active = activeTab === key
-              return (
+            {/* Warehouse — dispatch role sees Staged & Dispatch as flat mains; everyone else gets a dropdown */}
+            {isDispatchRole ? (
+              <>
+                {perm('staged', 'view') && (
+                  <button
+                    onClick={() => setActiveTab('staged')}
+                    style={activeTab === 'staged' ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
+                    className={btnCls(activeTab === 'staged')}
+                  >
+                    Staged
+                  </button>
+                )}
+                {perm('dispatch', 'view') && (
+                  <button
+                    onClick={() => setActiveTab('dispatch')}
+                    style={activeTab === 'dispatch' ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
+                    className={btnCls(activeTab === 'dispatch')}
+                  >
+                    Dispatch
+                  </button>
+                )}
+              </>
+            ) : warehouseItems.length > 0 && (
+              <div className="relative">
                 <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  style={active ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
-                  className={btnCls(active)}
+                  onClick={() => setOpenMenu(m => m === 'warehouse' ? null : 'warehouse')}
+                  style={warehouseActive ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
+                  className={`flex items-center gap-1 ${btnCls(warehouseActive)}`}
                 >
-                  {label}
+                  Warehouse <ChevronDown size={13} className={`transition-transform duration-150 ${openMenu === 'warehouse' ? 'rotate-180' : ''}`} />
                 </button>
-              )
-            })}
+
+                {openMenu === 'warehouse' && (
+                  <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[140px] z-[100]">
+                    {warehouseItems.map(({ key, label }) => (
+                      <button key={key} onClick={() => goTab(key)} className={itemCls(activeTab === key)}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* General dropdown — P&P (external, always) + Pricing (gated) */}
+            {(
+              <div className="relative">
+                <button
+                  onClick={() => setOpenMenu(m => m === 'general' ? null : 'general')}
+                  style={generalActive ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
+                  className={`flex items-center gap-1 ${btnCls(generalActive)}`}
+                >
+                  General <ChevronDown size={13} className={`transition-transform duration-150 ${openMenu === 'general' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openMenu === 'general' && (
+                  <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[140px] z-[100]">
+                    <a
+                      href={PP_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setOpenMenu(null)}
+                      className={itemCls(false)}
+                    >
+                      P&amp;P <ExternalLink size={13} className="opacity-60" />
+                    </a>
+                    {generalItems.map(({ key, label }) => (
+                      <button key={key} onClick={() => goTab(key)} className={itemCls(activeTab === key)}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Admin — flat main */}
+            {perm('admin', 'view') && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                style={activeTab === 'admin' ? { backgroundColor: '#111111', color: '#FECD28' } : {}}
+                className={btnCls(activeTab === 'admin')}
+              >
+                Admin
+              </button>
+            )}
           </nav>
 
           <div className="flex items-center gap-1">

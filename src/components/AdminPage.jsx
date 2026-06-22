@@ -25,7 +25,7 @@ const ROLE_ICONS = { admin: ShieldCheck, general: Shield, sales: User, dispatch:
 
 function UserForm({ initial, onSave, onCancel, isNew }) {
   const [form, setForm] = useState(() => {
-    const base = initial || { name: '', username: '', password: '', role: 'sales' }
+    const base = initial || { name: '', username: '', password: '', role: 'sales', email: '' }
     return { ...base, permissions: base.permissions || defaultPermsForRole(base.role) }
   })
   const [showPw, setShowPw] = useState(false)
@@ -84,6 +84,14 @@ function UserForm({ initial, onSave, onCancel, isNew }) {
               ${errors.username ? 'border-red-400' : 'border-slate-200 dark:border-slate-600 focus:border-brand'}`}
             placeholder="login username" />
           {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+            Email <span className="font-normal normal-case">(for reminder notifications)</span>
+          </label>
+          <input type="email" value={form.email || ''} onChange={e => set('email', e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-xl border bg-white dark:bg-slate-900 dark:text-slate-100 focus:outline-none transition-colors border-slate-200 dark:border-slate-600 focus:border-brand"
+            placeholder="name@cabglass.co.za" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
@@ -216,7 +224,7 @@ function UsersTab() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
-              {['Name', 'Username', 'Role', 'Actions'].map(h => (
+              {['Name', 'Username', 'Email', 'Role', 'Actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
@@ -228,7 +236,7 @@ function UsersTab() {
               return (
                 <tr key={u.id}>
                   {editingId === u.id ? (
-                    <td colSpan={4} className="px-4 py-3">
+                    <td colSpan={5} className="px-4 py-3">
                       <UserForm initial={u} onSave={(form) => handleEdit(u.id, form)} onCancel={() => setEditingId(null)} />
                     </td>
                   ) : (
@@ -244,6 +252,7 @@ function UsersTab() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-mono text-xs">{u.username}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">{u.email || <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${ROLE_BADGES[u.role]}`}>
                           <Icon size={11} /> {ROLES[u.role]?.label ?? u.role}

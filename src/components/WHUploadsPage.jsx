@@ -521,14 +521,36 @@ const WEEK_STYLES = {
 function WeekRow({ cat, year, week, ws, isCurrent, currentUser, onUploadDone }) {
   const [busy, setBusy] = useState(false)
   const [delId, setDelId] = useState(null)
+  const [queue, setQueue] = useState([]) // { file, previewUrl } — staged until "Upload N photos" is tapped
   const st = WEEK_STYLES[ws.state]
 
-  const handlePick = async (e) => {
-    const files = Array.from(e.target.files || [])
-    if (!files.length) return
+  // Selecting/taking photos only stages them — it does NOT upload immediately.
+  // On a phone, tapping "Add" → Camera takes one photo per tap (a browser/OS
+  // limit, not something we control), but they land in this queue so the user
+  // can tap "Add" repeatedly to take several, then hit Upload once at the end.
+  const addToQueue = (e) => {
+    const picked = Array.from(e.target.files || [])
+    if (!picked.length) return
+    const newItems = picked.map(file => ({
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }))
+    setQueue(q => [...q, ...newItems])
+    e.target.value = ''
+  }
+
+  const removeFromQueue = (idx) => {
+    setQueue(q => {
+      if (q[idx]?.previewUrl) URL.revokeObjectURL(q[idx].previewUrl)
+      return q.filter((_, i) => i !== idx)
+    })
+  }
+
+  const submitQueue = async () => {
+    if (!queue.length) return
     setBusy(true)
     try {
-      const payload = await Promise.all(files.map(async file => {
+      const payload = await Promise.all(queue.map(async ({ file }) => {
         const fileData = await new Promise((res, rej) => {
           const r = new FileReader()
           r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file)
@@ -536,9 +558,11 @@ function WeekRow({ cat, year, week, ws, isCurrent, currentUser, onUploadDone }) 
         return { fileName: file.name, fileData, mimeType: file.type }
       }))
       await whUpload(cat.id, payload, currentUser?.name || currentUser?.username || 'Unknown', `Week ${week}`, ws.key)
+      queue.forEach(item => { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl) })
+      setQueue([])
       onUploadDone()
     } catch (err) { alert('Upload failed: ' + err.message) }
-    finally { setBusy(false); e.target.value = '' }
+    finally { setBusy(false) }
   }
 
   const allFiles = ws.ups.flatMap(u => (u.files?.length ? u.files.map(f => ({ ...f, uploadId: u.id, by: u.uploadedBy, at: u.uploadedAt })) : []))
@@ -556,11 +580,33 @@ function WeekRow({ cat, year, week, ws, isCurrent, currentUser, onUploadDone }) 
         <div className="flex items-center gap-2">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${st.badge}`}>{st.label}</span>
           <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${busy ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: '#FECD28', color: '#111111' }}>
-            <Upload size={12} /> {busy ? 'Uploading…' : ws.ups.length ? 'Add more' : 'Upload'}
-            <input type="file" className="hidden" multiple disabled={busy} onChange={handlePick} />
+            <Upload size={12} /> {ws.ups.length || queue.length ? 'Add more' : 'Upload'}
+            <input type="file" className="hidden" multiple disabled={busy} onChange={addToQueue} />
           </label>
         </div>
       </div>
+
+      {/* Staged (not-yet-uploaded) photos for this week */}
+      {queue.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {queue.map((item, idx) => (
+              <div key={idx} className="relative flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-700 dark:text-slate-200 max-w-[160px]">
+                {item.previewUrl
+                  ? <img src={item.previewUrl} className="w-6 h-6 rounded object-cover shrink-0" alt="" />
+                  : <FileText size={14} className="shrink-0 text-slate-400" />}
+                <span className="truncate">{item.file.name}</span>
+                <button onClick={() => removeFromQueue(idx)} className="shrink-0 ml-1 text-slate-400 hover:text-red-500"><X size={12} /></button>
+              </div>
+            ))}
+          </div>
+          <button onClick={submitQueue} disabled={busy}
+            style={{ backgroundColor: '#FECD28' }}
+            className="w-full py-2 rounded-lg text-xs font-bold text-[#111111] disabled:opacity-50">
+            {busy ? 'Uploading…' : `Upload ${queue.length} photo${queue.length !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      )}
 
       {allFiles.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

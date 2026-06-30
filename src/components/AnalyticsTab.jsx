@@ -46,6 +46,17 @@ function buildDailyData(all, timeframeKey) {
   })
 }
 
+function courierSpend(all) {
+  const booked = all.filter(o => o.status === STATUS.BOOKED)
+  const tcg      = booked.filter(o => o.selectedCourier === 'TCG').reduce((s, o) => s + (o.tcgQuote ?? 0), 0)
+  const epx      = booked.filter(o => o.selectedCourier === 'EPX').reduce((s, o) => s + (o.epxQuote ?? 0), 0)
+  const triangle = booked.filter(o => o.selectedCourier === 'Triangle').length
+  const total    = tcg + epx
+  const tcgCount = booked.filter(o => o.selectedCourier === 'TCG').length
+  const epxCount = booked.filter(o => o.selectedCourier === 'EPX').length
+  return { tcg, epx, triangle, total, tcgCount, epxCount }
+}
+
 function courierStats(all) {
   return ['TCG', 'EPX'].map(c => {
     const key = c === 'TCG' ? 'tcgQuote' : 'epxQuote'
@@ -122,6 +133,7 @@ export default function AnalyticsTab({ orders, history }) {
   }))
 
   const topCourier = [...courierSplit].sort((a, b) => b.count - a.count)[0]?.courier ?? '—'
+  const spend      = courierSpend(data)
   const stats      = courierStats(data)
   const savings    = savingsData(data)
   const dailyData  = buildDailyData(data, timeframe)
@@ -168,6 +180,49 @@ export default function AnalyticsTab({ orders, history }) {
         <StatCard label="Booked" value={booked} sub={`${bookingRate}% success rate`} />
         <StatCard label="Errors / Failed" value={errors} sub={errors > 0 ? 'Needs attention' : 'All clear'} />
         <StatCard label="Top Courier" value={topCourier} sub="Most selected" />
+      </div>
+
+      {/* Courier spend */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Courier Spend</h3>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Booked shipments · {TIMEFRAMES.find(t => t.key === timeframe)?.label}</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Total */}
+          <div className="lg:col-span-1 bg-[#111111] rounded-xl p-4 flex flex-col justify-between">
+            <p className="text-xs font-semibold text-white/50 uppercase tracking-wide mb-1">Total Spent</p>
+            <p className="text-2xl font-bold text-white">R {spend.total.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-xs text-white/40 mt-1">{spend.tcgCount + spend.epxCount} shipments</p>
+          </div>
+          {/* TCG */}
+          <div className="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wide">TCG</p>
+              <span className="text-xs text-cyan-600 dark:text-cyan-500">{spend.tcgCount} shipments</span>
+            </div>
+            <p className="text-xl font-bold text-cyan-800 dark:text-cyan-300">R {spend.tcg.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            {spend.total > 0 && <p className="text-xs text-cyan-600 dark:text-cyan-500 mt-1">{Math.round((spend.tcg / spend.total) * 100)}% of total</p>}
+          </div>
+          {/* EPX */}
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">EPX</p>
+              <span className="text-xs text-orange-600 dark:text-orange-500">{spend.epxCount} shipments</span>
+            </div>
+            <p className="text-xl font-bold text-orange-800 dark:text-orange-300">R {spend.epx.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            {spend.total > 0 && <p className="text-xs text-orange-600 dark:text-orange-500 mt-1">{Math.round((spend.epx / spend.total) * 100)}% of total</p>}
+          </div>
+          {/* Triangle */}
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">Triangle</p>
+              <span className="text-xs text-yellow-600 dark:text-yellow-500">{spend.triangle} shipments</span>
+            </div>
+            <p className="text-xl font-bold text-yellow-800 dark:text-yellow-300">Manual</p>
+            <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">No quote data</p>
+          </div>
+        </div>
       </div>
 
       {/* Courier pricing breakdown */}

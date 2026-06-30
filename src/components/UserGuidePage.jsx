@@ -379,30 +379,24 @@ export default function UserGuidePage() {
   // ── Load pages ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!LIVE) return
-    // Skip refetch if we already have real pages cached this session
-    const cached = sessionStorage.getItem('wiki_pages')
-    if (cached) {
-      try {
-        const ps = JSON.parse(cached)
-        if (ps.length && ps[0].id !== '__seed__') return
-      } catch {}
-    }
-    // 8-second timeout — if Apps Script doesn't respond, show seed immediately
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    // Always fetch fresh from Vercel KV (fast — no Apps Script cold start)
     fetchWikiPages()
       .then(ps => {
-        clearTimeout(timeout)
         if (!ps.length) return
         const sorted = [...ps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        try { sessionStorage.setItem('wiki_pages', JSON.stringify(sorted)) } catch {}
         setPages(sorted)
-        const first = sorted.find(p => !p.parentId) || sorted[0]
-        setActivePage(first)
-        setContent('')
+        setActivePage(prev => {
+          // Keep current selection if it still exists, otherwise go to first
+          const still = sorted.find(p => p.id === prev?.id)
+          if (!still || prev?.id === '__seed__') {
+            setContent('')
+            return sorted.find(p => !p.parentId) || sorted[0]
+          }
+          return still
+        })
         setExpandedIds(new Set(sorted.filter(p => sorted.some(c => c.parentId === p.id)).map(p => p.id)))
       })
-      .catch(() => { clearTimeout(timeout) /* keep seed */ })
+      .catch(() => {/* keep whatever is showing */})
   }, [])
 
   // ── Load page content ───────────────────────────────────────────────────────

@@ -253,6 +253,7 @@ export default function UserGuidePage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [imgUploading, setImgUploading] = useState(false)
+  const [dragOver, setDragOver]         = useState(false)
 
   const textareaRef  = useRef(null)
   const imageInputRef = useRef(null)
@@ -441,35 +442,47 @@ export default function UserGuidePage() {
     })
   }, [])
 
-  // ── Image upload ────────────────────────────────────────────────────────────
+  // ── Image upload (shared by toolbar button + drag-and-drop) ─────────────────
+  const uploadImageFile = async (file, insertAtPos) => {
+    let url
+    if (LIVE) {
+      const fileData = await new Promise((res, rej) => {
+        const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file)
+      })
+      const result = await uploadWikiImage({ fileName: file.name, fileData, mimeType: file.type })
+      url = result.url
+    } else {
+      url = URL.createObjectURL(file)
+    }
+    const ins = `\n![${file.name}](${url})\n`
+    setDraft(v => {
+      const pos = insertAtPos ?? v.length
+      return v.slice(0, pos) + ins + v.slice(pos)
+    })
+  }
+
   const handleImagePick = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
     e.target.value = ''
     setImgUploading(true)
     try {
-      let url
-      if (LIVE) {
-        const fileData = await new Promise((res, rej) => {
-          const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file)
-        })
-        const result = await uploadWikiImage({ fileName: file.name, fileData, mimeType: file.type })
-        url = result.url
-      } else {
-        url = URL.createObjectURL(file)
-      }
-      const ta = textareaRef.current
-      if (ta) {
-        const pos = ta.selectionStart
-        const ins = `\n![${file.name}](${url})\n`
-        setDraft(v => v.slice(0, pos) + ins + v.slice(pos))
-        requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.selectionStart = textareaRef.current.selectionEnd = pos + ins.length
-            textareaRef.current.focus()
-          }
-        })
-      }
+      const pos = textareaRef.current?.selectionStart
+      for (const file of files) await uploadImageFile(file, pos)
+    } catch (err) { alert('Image upload failed: ' + err.message) }
+    finally { setImgUploading(false) }
+  }
+
+  const handleDrop = async (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+    if (!files.length) return
+    setImgUploading(true)
+    try {
+      // Insert at the drop caret position if we can get it, else end of text
+      const pos = textareaRef.current?.selectionStart
+      for (const file of files) await uploadImageFile(file, pos)
     } catch (err) { alert('Image upload failed: ' + err.message) }
     finally { setImgUploading(false) }
   }
@@ -630,15 +643,30 @@ export default function UserGuidePage() {
               {editing ? (
                 /* Split pane: raw markdown left, live preview right */
                 <div className="flex divide-x divide-slate-200 dark:divide-slate-700" style={{ minHeight: '520px' }}>
-                  <textarea
-                    ref={textareaRef}
-                    value={draft}
-                    onChange={e => setDraft(e.target.value)}
-                    spellCheck
-                    className="w-1/2 font-mono text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-5 focus:outline-none leading-relaxed resize-none border-0 self-stretch"
-                    placeholder="Start writing in Markdown…"
-                    style={{ minHeight: '520px' }}
-                  />
+                  <div className="relative w-1/2 self-stretch">
+                    <textarea
+                      ref={textareaRef}
+                      value={draft}
+                      onChange={e => setDraft(e.target.value)}
+                      onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={handleDrop}
+                      spellCheck
+                      className={`w-full h-full font-mono text-sm text-slate-800 dark:text-slate-100 p-5 focus:outline-none leading-relaxed resize-none border-0 transition-colors ${dragOver ? 'bg-[#FECD28]/10' : 'bg-white dark:bg-slate-800'}`}
+                      placeholder="Start writing in Markdown…"
+                      style={{ minHeight: '520px' }}
+                    />
+                    {dragOver && (
+                      <div className="pointer-events-none absolute inset-0 border-2 border-dashed border-[#FECD28] rounded-none flex items-center justify-center">
+                        <span className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg text-sm font-semibold text-[#111111] dark:text-[#FECD28] shadow">Drop image to insert</span>
+                      </div>
+                    )}
+                    {imgUploading && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-slate-800/60">
+                        <Loader2 size={24} className="animate-spin text-[#FECD28]" />
+                      </div>
+                    )}
+                  </div>
                   <article className="w-1/2 p-5 overflow-y-auto text-sm leading-relaxed bg-slate-50/50 dark:bg-slate-900/30 self-stretch" style={{ minHeight: '520px' }}>
                     {draft.trim() ? renderMarkdown(draft) : <span className="text-slate-300 dark:text-slate-600 italic select-none">Preview will appear here…</span>}
                   </article>

@@ -509,7 +509,9 @@ export default function UserGuidePage() {
 
   const [permsPage, setPermsPage]   = useState(null)
   const [movingPage, setMovingPage] = useState(null)
-  const [dragState, setDragState]   = useState(null) // { dragId, targetId, position }
+  const [dragState, setDragState]   = useState(null)
+  const [undoDelete, setUndoDelete] = useState(null) // { label, restore, commit, timer }
+  const undoRef = useRef(null)
 
   const [imgUploading, setImgUploading] = useState(false)
   const [dragOver, setDragOver]         = useState(false)
@@ -625,30 +627,59 @@ export default function UserGuidePage() {
   }
 
   // ── Delete ──────────────────────────────────────────────────────────────────
-  const confirmDelete = async () => {
+  const scheduleUndo = (label, snapshot, commitFn) => {
+    if (undoRef.current) clearTimeout(undoRef.current)
+    const timer = setTimeout(async () => {
+      setUndoDelete(null)
+      undoRef.current = null
+      try { if (LIVE) await commitFn() }
+      catch (err) { alert('Delete failed: ' + err.message) }
+    }, 5000)
+    undoRef.current = timer
+    setUndoDelete({ label, snapshot, timer })
+  }
+
+  const handleUndo = () => {
+    if (!undoDelete) return
+    clearTimeout(undoDelete.timer)
+    undoRef.current = null
+    setPages(undoDelete.snapshot.pages)
+    if (undoDelete.snapshot.activePage) setActivePage(undoDelete.snapshot.activePage)
+    if (undoDelete.snapshot.content !== undefined) setContent(undoDelete.snapshot.content)
+    setUndoDelete(null)
+  }
+
+  const confirmDelete = () => {
     if (!activePage || activePage.locked) return
-    setDeleting(true)
-    try {
-      if (LIVE) await deleteWikiPage({ id: activePage.id })
-      const remaining = pages.filter(p => p.id !== activePage.id)
-      setPages(remaining)
-      const next = remaining.find(p => !p.parentId) || remaining[0] || null
-      setActivePage(next || SEED_PAGE)
-      if (!next) setContent(SEED_CONTENT)
-      setDeleteConfirm(false)
-    } catch (err) { alert('Delete failed: ' + err.message) }
-    finally { setDeleting(false) }
+    const deletedPage = activePage
+    const deletedContent = content
+    const remaining = pages.filter(p => p.id !== deletedPage.id)
+    const next = remaining.find(p => !p.parentId) || remaining[0] || null
+    setPages(remaining)
+    setActivePage(next || SEED_PAGE)
+    setContent(next ? content : SEED_CONTENT)
+    setDeleteConfirm(false)
+    scheduleUndo(
+      `"${deletedPage.title}" deleted`,
+      { pages, activePage: deletedPage, content: deletedContent },
+      () => deleteWikiPage({ id: deletedPage.id })
+    )
   }
 
   // ── Delete folder ───────────────────────────────────────────────────────────
-  const deleteFolder = async (folderId) => {
-    try {
-      if (LIVE) await deleteWikiPage({ id: folderId })
-      // Move children to root before removing folder
-      const children = pages.filter(p => p.parentId === folderId)
-      if (LIVE) await Promise.all(children.map(c => saveWikiPage({ id: c.id, parentId: null })))
-      setPages(ps => ps.filter(p => p.id !== folderId).map(p => p.parentId === folderId ? { ...p, parentId: null } : p))
-    } catch (err) { alert('Delete failed: ' + err.message) }
+  const deleteFolder = (folderId) => {
+    const folder = pages.find(p => p.id === folderId)
+    const children = pages.filter(p => p.parentId === folderId)
+    const snapshot = { pages }
+    setPages(ps => ps.filter(p => p.id !== folderId).map(p => p.parentId === folderId ? { ...p, parentId: null } : p))
+    scheduleUndo(
+      `Folder "${folder?.title || 'folder'}" deleted`,
+      snapshot,
+      async () => {
+        await deleteWikiPage({ id: folderId })
+        await Promise.all(children.map(c => saveWikiPage({ id: c.id, parentId: null })))
+      }
+    )
   }
 
   // ── Rename folder ───────────────────────────────────────────────────────────
@@ -1166,6 +1197,16 @@ export default function UserGuidePage() {
           onMove={(folderId) => movePage(movingPage, folderId)}
           onClose={() => setMovingPage(null)}
         />
+      )}
+
+      {undoDelete && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-800 dark:bg-slate-700 text-white px-4 py-3 rounded-2xl shadow-2xl text-sm">
+          <span>{undoDelete.label}</span>
+          <button onClick={handleUndo}
+            className="font-bold text-[#FECD28] hover:text-yellow-300 transition-colors px-1">
+            Undo
+          </button>
+        </div>
       )}
     </div>
   )

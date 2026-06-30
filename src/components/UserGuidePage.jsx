@@ -159,9 +159,10 @@ function renderMarkdown(md) {
     }
     const imgLineM = line.trim().match(/^!\[([^\]]*)\]\(([^)]*)\)$/)
     if (imgLineM) {
-      // Convert any Drive URL → lh3 format which is reliably embeddable cross-origin
       const rawSrc = imgLineM[2]
-      const driveId = rawSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || rawSrc.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
+      // Only rewrite actual Google Drive URLs — leave /api/wiki-image and other URLs alone
+      const isDrive = rawSrc.includes('drive.google.com')
+      const driveId = isDrive ? (rawSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || rawSrc.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]) : null
       const src = driveId ? `https://lh3.googleusercontent.com/d/${driveId}` : rawSrc
       blocks.push(<img key={key++} src={src} alt={imgLineM[1]} className="max-w-full rounded-xl my-4 border border-slate-200 dark:border-slate-700 shadow-sm" />); i++; continue
     }

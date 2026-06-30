@@ -38,7 +38,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
 
   const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
   const warehouseActive = activeTab === 'staged' || activeTab === 'dispatch' || activeTab === 'wh'
-  const generalActive = activeTab === 'pricing' || activeTab === 'userguide'
+  const generalActive = activeTab === 'pricing'
 
   // Items that live under the Warehouse dropdown (non-dispatch roles)
   const warehouseItems = [
@@ -153,8 +153,8 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
               </div>
             )}
 
-            {/* General dropdown — User Guide (always) + Pricing (gated) */}
-            {(
+            {/* General dropdown — Pricing (gated) */}
+            {generalItems.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => setOpenMenu(m => m === 'general' ? null : 'general')}
@@ -163,12 +163,8 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
                 >
                   General <ChevronDown size={13} className={`transition-transform duration-150 ${openMenu === 'general' ? 'rotate-180' : ''}`} />
                 </button>
-
                 {openMenu === 'general' && (
                   <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[140px] z-[100]">
-                    <button onClick={() => goTab('userguide')} className={itemCls(activeTab === 'userguide')}>
-                      User Guide
-                    </button>
                     {generalItems.map(({ key, label }) => (
                       <button key={key} onClick={() => goTab(key)} className={itemCls(activeTab === key)}>
                         {label}

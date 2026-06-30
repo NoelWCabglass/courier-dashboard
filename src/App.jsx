@@ -18,7 +18,6 @@ import { buildWHNotifications } from './utils/whNotifications'
 import AdminPage from './components/AdminPage'
 import WHUploadsPage from './components/WHUploadsPage'
 import GlassPricingPage from './components/GlassPricingPage'
-import UserGuidePage from './components/UserGuidePage'
 import UploadTab from './components/UploadTab'
 import DispatchTab from './components/DispatchTab'
 import StagedTab from './components/StagedTab'
@@ -378,7 +377,6 @@ function Dashboard() {
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
             {activeTab === 'pricing'  && <GlassPricingPage />}
-            {activeTab === 'userguide' && <UserGuidePage />}
             {activeTab === 'staged' && (
               <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} onSaveNote={saveOrderNote} />
             )}

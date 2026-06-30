@@ -135,7 +135,7 @@ export default async function handler(req, res) {
       const { action } = body
 
       if (action === 'savePage') {
-        const { id, title, content, parentId, locked, viewRoles, editRoles, viewUsers, editUsers, updatedBy } = body
+        const { id, title, content, parentId, isFolder, locked, viewRoles, editRoles, viewUsers, editUsers, updatedBy } = body
         const pageId = id || `page_${Date.now()}`
         let index = await redis.get('wiki:index') || []
 
@@ -144,6 +144,7 @@ export default async function handler(req, res) {
           id: pageId,
           title: title || 'Untitled',
           parentId: parentId || null,
+          isFolder: isFolder || false,
           locked: locked || false,
           viewRoles: viewRoles || [],
           editRoles: editRoles || ['admin'],

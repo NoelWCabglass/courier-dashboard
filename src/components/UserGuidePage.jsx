@@ -6,7 +6,7 @@ import {
   List, ListOrdered, Minus, Quote,
   Code, FileCode2,
   ChevronRight, ChevronDown, AlertCircle, Loader2,
-  Search, Shield, Users, Eye, EyeOff, Printer,
+  Search, Shield, Users, Eye, EyeOff, Printer, Folder, FolderOpen, FileText,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -292,35 +292,51 @@ function PermissionsModal({ page, allPages, allRoles, allUsers, onSave, onClose 
 }
 
 // ─── Sidebar tree item ────────────────────────────────────────────────────────
-function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, isAdmin, canView }) {
+function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, isAdmin, canView }) {
   if (!canView(page)) return null
   const children = allPages.filter(p => p.parentId === page.id && canView(p))
   const hasChildren = children.length > 0
   const isActive = page.id === activeId
   const isExpanded = expandedIds.has(page.id)
+  const isFolder = page.isFolder
 
   return (
     <div>
-      <div className={`group flex items-center gap-0.5 rounded-xl transition-colors ${isActive ? 'bg-[#FECD28]/20 dark:bg-[#FECD28]/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+      <div className={`group flex items-center gap-0.5 rounded-xl transition-colors ${isActive && !isFolder ? 'bg-[#FECD28]/20 dark:bg-[#FECD28]/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
         style={{ paddingLeft: depth * 12 + 4 }}>
         {/* Expand toggle */}
-        <button onClick={() => hasChildren && toggleExpanded(page.id)}
-          className={`p-0.5 shrink-0 text-slate-400 dark:text-slate-500 transition-colors ${hasChildren ? 'hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer' : 'cursor-default opacity-0 pointer-events-none'}`}>
+        <button onClick={() => (hasChildren || isFolder) && toggleExpanded(page.id)}
+          className={`p-0.5 shrink-0 text-slate-400 dark:text-slate-500 transition-colors ${(hasChildren || isFolder) ? 'hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer' : 'cursor-default opacity-0 pointer-events-none'}`}>
           {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
 
+        {/* Folder / page icon */}
+        <span className="shrink-0 mr-1">
+          {isFolder
+            ? (isExpanded ? <FolderOpen size={13} className="text-[#FECD28]" /> : <Folder size={13} className="text-[#FECD28]" />)
+            : <FileText size={11} className="text-slate-400 dark:text-slate-500" />}
+        </span>
+
         {/* Title */}
-        <button onClick={() => onSelect(page)} className={`flex-1 min-w-0 text-left py-1.5 text-sm truncate ${isActive ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
+        <button onClick={() => !isFolder && onSelect(page)}
+          className={`flex-1 min-w-0 text-left py-1.5 text-sm truncate ${isFolder ? 'font-semibold text-slate-700 dark:text-slate-200 cursor-default' : isActive ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
           <Highlight text={page.title} query={searchQuery} />
         </button>
 
-        {/* Icons */}
+        {/* Action icons */}
         <div className="flex items-center gap-0.5 pr-1 shrink-0">
           {page.locked && <Lock size={9} className="text-slate-400 dark:text-slate-500" />}
           {page.viewRoles?.length > 0 && !page.viewRoles.includes('general') && (
             <EyeOff size={9} className="text-amber-400" title="Restricted visibility" />
           )}
-          {isAdmin && (
+          {isAdmin && isFolder && (
+            <button onClick={e => { e.stopPropagation(); onCreatePageInFolder(page.id) }}
+              title="New page in folder"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+              <Plus size={11} />
+            </button>
+          )}
+          {isAdmin && !isFolder && (
             <button onClick={e => { e.stopPropagation(); onCreateSubpage(page.id) }}
               title="New subpage"
               className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
@@ -331,13 +347,15 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
       </div>
 
       {/* Children */}
-      {hasChildren && isExpanded && children
+      {(hasChildren || isFolder) && isExpanded && children
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map(child => (
           <PageItem key={child.id} page={child} depth={depth + 1}
             allPages={allPages} activeId={activeId} searchQuery={searchQuery}
             expandedIds={expandedIds} toggleExpanded={toggleExpanded}
             onSelect={onSelect} onCreateSubpage={onCreateSubpage}
+            onCreatePageInFolder={onCreatePageInFolder}
+            onMoveToFolder={onMoveToFolder}
             isAdmin={isAdmin} canView={canView} />
         ))
       }
@@ -437,8 +455,30 @@ export default function UserGuidePage() {
   }
 
   // ── Create page ─────────────────────────────────────────────────────────────
+  const createFolder = async () => {
+    const title = 'New Folder'
+    const payload = { title, content: '', parentId: null, isFolder: true, viewRoles: [], editRoles: ['admin'], updatedBy: user?.name || user?.username || '' }
+    try {
+      if (LIVE) {
+        const { page: p } = await saveWikiPage(payload)
+        const newPage = { ...p, isFolder: true }
+        setPages(ps => [...ps, newPage])
+        setExpandedIds(s => new Set([...s, newPage.id]))
+      } else {
+        const p = { id: 'mock' + Date.now(), title, parentId: null, isFolder: true, locked: false, viewRoles: [], editRoles: ['admin'], updatedAt: new Date().toISOString(), updatedBy: '', order: pages.length }
+        setPages(ps => [...ps, p])
+        setExpandedIds(s => new Set([...s, p.id]))
+      }
+    } catch (err) { alert('Could not create folder: ' + err.message) }
+  }
+
+  const createPageInFolder = async (folderId) => {
+    setExpandedIds(s => new Set([...s, folderId]))
+    await createPage(folderId)
+  }
+
   const createPage = async (parentId = null) => {
-    const title = parentId ? 'New Subpage' : 'New Page'
+    const title = parentId ? 'New Page' : 'New Page'
     const payload = { title, content: '', parentId, viewRoles: [], editRoles: ['admin'], updatedBy: user?.name || user?.username || '' }
     if (LIVE) {
       try {
@@ -650,10 +690,16 @@ export default function UserGuidePage() {
             <span className="text-xs font-semibold uppercase tracking-wide">Pages</span>
           </div>
           {isAdmin && !editing && (
-            <button onClick={() => createPage(null)} title="New root page"
-              className="p-1 rounded-lg text-slate-400 hover:text-[#111111] dark:hover:text-[#FECD28] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-              <Plus size={15} />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button onClick={createFolder} title="New folder"
+                className="p-1 rounded-lg text-slate-400 hover:text-[#FECD28] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <Folder size={14} />
+              </button>
+              <button onClick={() => createPage(null)} title="New page"
+                className="p-1 rounded-lg text-slate-400 hover:text-[#111111] dark:hover:text-[#FECD28] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <Plus size={15} />
+              </button>
+            </div>
           )}
         </div>
 
@@ -692,6 +738,8 @@ export default function UserGuidePage() {
                     allPages={pages} activeId={activePage?.id} searchQuery={searchQuery}
                     expandedIds={expandedIds} toggleExpanded={toggleExpanded}
                     onSelect={selectPage} onCreateSubpage={createPage}
+                    onCreatePageInFolder={createPageInFolder}
+                    onMoveToFolder={() => {}}
                     isAdmin={isAdmin} canView={canView} />
                 ))
           )}

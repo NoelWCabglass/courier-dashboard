@@ -159,10 +159,10 @@ function renderMarkdown(md) {
     }
     const imgLineM = line.trim().match(/^!\[([^\]]*)\]\(([^)]*)\)$/)
     if (imgLineM) {
-      // Convert old uc?export=view Drive URLs → thumbnail (more reliably embeddable)
+      // Convert any Drive URL → lh3 format which is reliably embeddable cross-origin
       const rawSrc = imgLineM[2]
-      const driveId = rawSrc.match(/[?&]id=([^&)]+)/)?.[1]
-      const src = driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600` : rawSrc
+      const driveId = rawSrc.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || rawSrc.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
+      const src = driveId ? `https://lh3.googleusercontent.com/d/${driveId}` : rawSrc
       blocks.push(<img key={key++} src={src} alt={imgLineM[1]} className="max-w-full rounded-xl my-4 border border-slate-200 dark:border-slate-700 shadow-sm" />); i++; continue
     }
     const para = []

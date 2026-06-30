@@ -158,7 +158,13 @@ function renderMarkdown(md) {
       continue
     }
     const imgLineM = line.trim().match(/^!\[([^\]]*)\]\(([^)]*)\)$/)
-    if (imgLineM) { blocks.push(<img key={key++} src={imgLineM[2]} alt={imgLineM[1]} className="max-w-full rounded-xl my-4 border border-slate-200 dark:border-slate-700 shadow-sm" />); i++; continue }
+    if (imgLineM) {
+      // Convert old uc?export=view Drive URLs → thumbnail (more reliably embeddable)
+      const rawSrc = imgLineM[2]
+      const driveId = rawSrc.match(/[?&]id=([^&)]+)/)?.[1]
+      const src = driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600` : rawSrc
+      blocks.push(<img key={key++} src={src} alt={imgLineM[1]} className="max-w-full rounded-xl my-4 border border-slate-200 dark:border-slate-700 shadow-sm" />); i++; continue
+    }
     const para = []
     while (i < lines.length && lines[i].trim() && !isBullet(lines[i]) && !isOrdered(lines[i]) && !isQuote(lines[i]) && !lines[i].startsWith('#') && lines[i].trim() !== '---' && !lines[i].startsWith('```')) { para.push(lines[i]); i++ }
     blocks.push(<p key={key++} className="my-2 leading-relaxed text-slate-700 dark:text-slate-300">{para.flatMap((l,pi) => pi === 0 ? [renderInline(l,`p${key}-${pi}`)] : [<br key={`br${key}-${pi}`}/>, renderInline(l,`p${key}-${pi}`)])}</p>)

@@ -141,18 +141,19 @@ export default async function handler(req, res) {
 
         const existing = index.find(p => p.id === pageId)
         const meta = {
+          ...(existing || {}),
           id: pageId,
-          title: title || 'Untitled',
-          parentId: parentId || null,
-          isFolder: isFolder || false,
-          locked: locked || false,
-          viewRoles: viewRoles || [],
-          editRoles: editRoles || ['admin'],
-          viewUsers: viewUsers || [],
-          editUsers: editUsers || [],
-          updatedAt: new Date().toISOString(),
-          updatedBy: updatedBy || '',
-          order: existing?.order ?? index.length,
+          title: title !== undefined ? (title || 'Untitled') : (existing?.title || 'Untitled'),
+          parentId: parentId !== undefined ? (parentId || null) : (existing?.parentId || null),
+          isFolder: isFolder !== undefined ? (isFolder || false) : (existing?.isFolder || false),
+          locked: locked !== undefined ? (locked || false) : (existing?.locked || false),
+          viewRoles: viewRoles !== undefined ? viewRoles : (existing?.viewRoles || []),
+          editRoles: editRoles !== undefined ? editRoles : (existing?.editRoles || ['admin']),
+          viewUsers: viewUsers !== undefined ? viewUsers : (existing?.viewUsers || []),
+          editUsers: editUsers !== undefined ? editUsers : (existing?.editUsers || []),
+          updatedAt: updatedBy !== undefined ? new Date().toISOString() : (existing?.updatedAt || new Date().toISOString()),
+          updatedBy: updatedBy !== undefined ? updatedBy : (existing?.updatedBy || ''),
+          order: body.order !== undefined ? body.order : (existing?.order ?? index.length),
         }
 
         if (existing) {

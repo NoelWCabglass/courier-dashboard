@@ -6,7 +6,7 @@ import {
   List, ListOrdered, Minus, Quote,
   Code, FileCode2,
   ChevronRight, ChevronDown, AlertCircle, Loader2,
-  Search, Shield, Users, Eye, EyeOff,
+  Search, Shield, Users, Eye, EyeOff, Printer,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -192,34 +192,34 @@ function Highlight({ text, query }) {
 }
 
 // ─── Permissions modal ────────────────────────────────────────────────────────
-function PermissionsModal({ page, allPages, allRoles, onSave, onClose }) {
+function PermissionsModal({ page, allPages, allRoles, allUsers, onSave, onClose }) {
   const [viewRoles, setViewRoles] = useState(() => page.viewRoles?.length ? page.viewRoles : allRoles)
   const [editRoles, setEditRoles] = useState(() => page.editRoles?.length ? page.editRoles : ['admin'])
+  const [viewUsers, setViewUsers] = useState(() => page.viewUsers || [])
+  const [editUsers, setEditUsers] = useState(() => page.editUsers || [])
   const [applyAll,  setApplyAll]  = useState(false)
   const [saving,    setSaving]    = useState(false)
+  const [tab,       setTab]       = useState('roles')
 
-  const toggle = (role, list, setList) => {
-    setList(list.includes(role) ? list.filter(r => r !== role) : [...list, role])
-  }
+  const toggle = (val, list, setList) =>
+    setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val])
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave({ viewRoles, editRoles, applyAll })
+    await onSave({ viewRoles, editRoles, viewUsers, editUsers, applyAll })
     setSaving(false)
     onClose()
   }
 
-  const RoleRow = ({ role, inView, inEdit }) => (
+  const Row = ({ label, inView, onView, inEdit, onEdit, disabled }) => (
     <tr className="border-b border-slate-100 dark:border-slate-700">
-      <td className="py-2 pr-4 text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{role}</td>
+      <td className="py-2 pr-4 text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{label}</td>
       <td className="py-2 px-4 text-center">
-        <input type="checkbox" checked={inView} onChange={() => toggle(role, viewRoles, setViewRoles)}
-          disabled={role === 'admin'}
+        <input type="checkbox" checked={inView} onChange={onView} disabled={disabled}
           className="w-4 h-4 accent-[#FECD28] cursor-pointer disabled:opacity-40" />
       </td>
       <td className="py-2 px-4 text-center">
-        <input type="checkbox" checked={inEdit} onChange={() => toggle(role, editRoles, setEditRoles)}
-          disabled={role === 'admin'}
+        <input type="checkbox" checked={inEdit} onChange={onEdit} disabled={disabled}
           className="w-4 h-4 accent-[#FECD28] cursor-pointer disabled:opacity-40" />
       </td>
     </tr>
@@ -233,33 +233,48 @@ function PermissionsModal({ page, allPages, allRoles, onSave, onClose }) {
           <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex-1 truncate">Permissions · {page.title}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={16} /></button>
         </div>
-        <div className="px-5 py-4">
+
+        {/* Tabs */}
+        <div className="flex border-b border-slate-100 dark:border-slate-700 px-5">
+          {['roles', 'users'].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`py-2 px-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${tab === t ? 'border-[#FECD28] text-slate-900 dark:text-slate-100' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+              {t === 'roles' ? 'By Role' : 'By User'}
+            </button>
+          ))}
+        </div>
+
+        <div className="px-5 py-4 max-h-72 overflow-y-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b-2 border-slate-200 dark:border-slate-600">
-                <th className="text-left pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Role</th>
-                <th className="pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">
-                  <span className="flex items-center justify-center gap-1"><Eye size={12}/> View</span>
-                </th>
-                <th className="pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">
-                  <span className="flex items-center justify-center gap-1"><Pencil size={12}/> Edit</span>
-                </th>
+                <th className="text-left pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">{tab === 'roles' ? 'Role' : 'User'}</th>
+                <th className="pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center"><span className="flex items-center justify-center gap-1"><Eye size={12}/> View</span></th>
+                <th className="pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center"><span className="flex items-center justify-center gap-1"><Pencil size={12}/> Edit</span></th>
               </tr>
             </thead>
             <tbody>
-              {allRoles.map(role => (
-                <RoleRow key={role} role={role}
+              {tab === 'roles' ? allRoles.map(role => (
+                <Row key={role} label={role}
                   inView={viewRoles.includes(role) || role === 'admin'}
-                  inEdit={editRoles.includes(role) || role === 'admin'} />
+                  inEdit={editRoles.includes(role) || role === 'admin'}
+                  onView={() => toggle(role, viewRoles, setViewRoles)}
+                  onEdit={() => toggle(role, editRoles, setEditRoles)}
+                  disabled={role === 'admin'} />
+              )) : allUsers.map(u => (
+                <Row key={u.username} label={`${u.name || u.username} (${u.role})`}
+                  inView={viewUsers.includes(u.username)}
+                  inEdit={editUsers.includes(u.username)}
+                  onView={() => toggle(u.username, viewUsers, setViewUsers)}
+                  onEdit={() => toggle(u.username, editUsers, setEditUsers)}
+                  disabled={u.role === 'admin'} />
               ))}
             </tbody>
           </table>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Admins always have full access. Empty view list = visible to all.</p>
-
-          <label className="flex items-center gap-2 mt-4 cursor-pointer">
-            <input type="checkbox" checked={applyAll} onChange={e => setApplyAll(e.target.checked)}
-              className="w-4 h-4 accent-[#FECD28]" />
-            <span className="text-sm text-slate-700 dark:text-slate-300">Apply these permissions to <strong>all {allPages.length} pages</strong></span>
+          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+            <input type="checkbox" checked={applyAll} onChange={e => setApplyAll(e.target.checked)} className="w-4 h-4 accent-[#FECD28]" />
+            <span className="text-sm text-slate-700 dark:text-slate-300">Apply to <strong>all {allPages.length} pages</strong></span>
           </label>
         </div>
         <div className="flex gap-2 px-5 pb-4">
@@ -339,15 +354,17 @@ export default function UserGuidePage() {
 
   const canView = useCallback((page) => {
     if (isAdmin) return true
-    if (!page.viewRoles || page.viewRoles.length === 0) return true
-    return page.viewRoles.includes(user?.role)
-  }, [isAdmin, user?.role])
+    if (page.viewUsers?.includes(user?.username)) return true
+    if (!page.viewRoles?.length && !page.viewUsers?.length) return true
+    return page.viewRoles?.includes(user?.role)
+  }, [isAdmin, user?.role, user?.username])
 
   const canEditPage = useCallback((page) => {
     if (isAdmin) return true
-    if (!page.editRoles || page.editRoles.length === 0) return false
-    return page.editRoles.includes(user?.role)
-  }, [isAdmin, user?.role])
+    if (page.editUsers?.includes(user?.username)) return true
+    if (!page.editRoles?.length && !page.editUsers?.length) return false
+    return page.editRoles?.includes(user?.role)
+  }, [isAdmin, user?.role, user?.username])
 
   const [pages, setPages]           = useState(() => {
     try { const c = sessionStorage.getItem('wiki_pages'); return c ? JSON.parse(c) : [SEED_PAGE] } catch { return [SEED_PAGE] }
@@ -479,16 +496,16 @@ export default function UserGuidePage() {
   }
 
   // ── Permissions save ────────────────────────────────────────────────────────
-  const savePermissions = async ({ viewRoles, editRoles, applyAll }) => {
+  const savePermissions = async ({ viewRoles, editRoles, viewUsers, editUsers, applyAll }) => {
     const targets = applyAll ? pages.filter(p => p.id !== '__seed__') : [activePage]
-    const updates = targets.map(p => ({ ...p, viewRoles, editRoles }))
+    const updates = targets.map(p => ({ ...p, viewRoles, editRoles, viewUsers, editUsers }))
     setPages(ps => ps.map(p => updates.find(u => u.id === p.id) || p))
     if (activePage && updates.find(u => u.id === activePage.id)) {
-      setActivePage(a => ({ ...a, viewRoles, editRoles }))
+      setActivePage(a => ({ ...a, viewRoles, editRoles, viewUsers, editUsers }))
     }
     if (LIVE) {
       try {
-        await Promise.all(targets.map(p => saveWikiPage({ id: p.id, viewRoles, editRoles, updatedBy: user?.name || '' })))
+        await Promise.all(targets.map(p => saveWikiPage({ id: p.id, viewRoles, editRoles, viewUsers, editUsers, updatedBy: user?.name || '' })))
       } catch (err) { alert('Could not save permissions: ' + err.message) }
     }
   }
@@ -711,6 +728,46 @@ export default function UserGuidePage() {
               {/* Admin controls — view mode */}
               {isAdmin && !editing && (
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* Print */}
+                  <button onClick={() => {
+                    const w = window.open('', '_blank')
+                    w.document.write(`<!DOCTYPE html><html><head><title>${activePage.title}</title><style>
+                      body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;color:#111;line-height:1.6}
+                      h1{font-size:2em;font-weight:800;margin-bottom:4px}h2{font-size:1.3em;font-weight:700;margin-top:2em;padding-bottom:4px;border-bottom:1px solid #ddd}
+                      h3{font-size:1.1em;font-weight:600;margin-top:1.4em}p{margin:.5em 0}
+                      ul,ol{margin:.5em 0;padding-left:1.6em}li{margin:.25em 0}
+                      pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto;font-size:.85em}
+                      code{background:#f4f4f4;padding:1px 4px;border-radius:3px;font-size:.9em}
+                      blockquote{border-left:3px solid #FECD28;margin:0;padding-left:16px;color:#555;font-style:italic}
+                      hr{border:none;border-top:1px solid #ddd;margin:1.5em 0}
+                      img{max-width:100%}strong{font-weight:700}em{font-style:italic}
+                      @media print{body{margin:20px}}
+                    </style></head><body>
+                    <h1>${activePage.title}</h1>
+                    <div id="content"></div>
+                    <script>
+                      const md = ${JSON.stringify(content)};
+                      document.getElementById('content').innerHTML = md
+                        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                        .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+                        .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+                        .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+                        .replace(/^---$/gm,'<hr>')
+                        .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+                        .replace(/^\d+\. (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>')
+                        .replace(/^[-*] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
+                        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                        .replace(/_(.+?)_/g,'<em>$1</em>')
+                        .replace(/!\[([^\]]*)\]\(([^)]*)\)/g,'<img src="$2" alt="$1">')
+                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>')
+                        .replace(/\n\n/g,'</p><p>').replace(/^(?!<)/gm,'').replace(/^/,'<p>').replace(/$/,'</p>');
+                      window.print();
+                    </script></body></html>`)
+                    w.document.close()
+                  }} title="Print page"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <Printer size={14} />
+                  </button>
                   {/* Permissions */}
                   <button onClick={() => setPermsPage(activePage)} title="Permissions"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
@@ -845,6 +902,7 @@ export default function UserGuidePage() {
           page={permsPage}
           allPages={pages.filter(p => p.id !== '__seed__')}
           allRoles={allRoles}
+          allUsers={(users || []).filter(u => u.role !== 'admin')}
           onSave={savePermissions}
           onClose={() => setPermsPage(null)}
         />

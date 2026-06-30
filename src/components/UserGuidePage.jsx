@@ -258,34 +258,39 @@ export default function UserGuidePage() {
   const textareaRef  = useRef(null)
   const imageInputRef = useRef(null)
 
+  // ── Seed page shown immediately / used as fallback ─────────────────────────
+  const SEED_PAGE = { id: '__seed__', title: 'User Guide', locked: true, updatedAt: '', updatedBy: 'system', order: 0 }
+
   // ── Load page list ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!LIVE) {
-      const mock = [{ id: 'mock1', title: 'User Guide', locked: true, updatedAt: new Date().toISOString(), updatedBy: 'system', order: 0 }]
-      setPages(mock)
-      setActivePage(mock[0])
-      setContent(SEED_CONTENT)
-      setLoadingPages(false)
-      return
-    }
+    // Show seed content immediately so the page is never blank while loading
+    setPages([SEED_PAGE])
+    setActivePage(SEED_PAGE)
+    setContent(SEED_CONTENT)
+
+    if (!LIVE) { setLoadingPages(false); return }
+
     fetchWikiPages()
       .then(ps => {
+        if (!ps.length) return // backend returned empty — keep seed
         const sorted = [...ps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         setPages(sorted)
-        if (sorted.length) setActivePage(sorted[0])
+        setActivePage(sorted[0])
+        // Content for the first page will load in the next effect
+        setContent('')
       })
-      .catch(err => console.error('Wiki pages load failed:', err))
+      .catch(() => {/* backend not yet deployed — seed stays visible */})
       .finally(() => setLoadingPages(false))
   }, [])
 
   // ── Load page content ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!activePage || !LIVE) return
+    if (!activePage || activePage.id === '__seed__' || !LIVE) return
     setLoadingContent(true)
     setContent('')
     fetchWikiPage(activePage.id)
-      .then(c => setContent(c))
-      .catch(err => console.error('Wiki page load failed:', err))
+      .then(c => setContent(c || SEED_CONTENT)) // empty page → show seed as default
+      .catch(() => setContent(SEED_CONTENT))
       .finally(() => setLoadingContent(false))
   }, [activePage?.id])
 

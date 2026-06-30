@@ -857,6 +857,11 @@ export default function UserGuidePage() {
                       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                       onDragLeave={() => setDragOver(false)}
                       onDrop={handleDrop}
+                      onKeyDown={e => {
+                        // Prevent # (and other special chars) from triggering browser URL navigation
+                        e.stopPropagation()
+                      }}
+                      autoFocus
                       spellCheck
                       className={`w-full h-full font-mono text-sm text-slate-800 dark:text-slate-100 p-5 focus:outline-none leading-relaxed resize-none border-0 transition-colors ${dragOver ? 'bg-[#FECD28]/10' : 'bg-white dark:bg-slate-800'}`}
                       placeholder="Start writing in Markdown…"

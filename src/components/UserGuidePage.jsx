@@ -349,10 +349,12 @@ export default function UserGuidePage() {
     return page.editRoles.includes(user?.role)
   }, [isAdmin, user?.role])
 
-  const [pages, setPages]           = useState([SEED_PAGE])
+  const [pages, setPages]           = useState(() => {
+    try { const c = sessionStorage.getItem('wiki_pages'); return c ? JSON.parse(c) : [SEED_PAGE] } catch { return [SEED_PAGE] }
+  })
   const [activePage, setActivePage] = useState(SEED_PAGE)
   const [content, setContent]       = useState(SEED_CONTENT)
-  const [loadingPages, setLoadingPages]     = useState(LIVE)
+  const [loadingPages, setLoadingPages]     = useState(false)
   const [loadingContent, setLoadingContent] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -376,20 +378,31 @@ export default function UserGuidePage() {
 
   // ── Load pages ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!LIVE) { setLoadingPages(false); return }
+    if (!LIVE) return
+    // Skip refetch if we already have real pages cached this session
+    const cached = sessionStorage.getItem('wiki_pages')
+    if (cached) {
+      try {
+        const ps = JSON.parse(cached)
+        if (ps.length && ps[0].id !== '__seed__') return
+      } catch {}
+    }
+    // 8-second timeout — if Apps Script doesn't respond, show seed immediately
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     fetchWikiPages()
       .then(ps => {
+        clearTimeout(timeout)
         if (!ps.length) return
         const sorted = [...ps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        try { sessionStorage.setItem('wiki_pages', JSON.stringify(sorted)) } catch {}
         setPages(sorted)
         const first = sorted.find(p => !p.parentId) || sorted[0]
         setActivePage(first)
         setContent('')
-        // Auto-expand parents
         setExpandedIds(new Set(sorted.filter(p => sorted.some(c => c.parentId === p.id)).map(p => p.id)))
       })
-      .catch(() => {/* keep seed */})
-      .finally(() => setLoadingPages(false))
+      .catch(() => { clearTimeout(timeout) /* keep seed */ })
   }, [])
 
   // ── Load page content ───────────────────────────────────────────────────────

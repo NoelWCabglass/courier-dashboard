@@ -320,7 +320,11 @@ function MoveToFolderModal({ page, folders, onMove, onClose }) {
 }
 
 // ─── Sidebar tree item ────────────────────────────────────────────────────────
-function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, onDeleteFolder, onRenameFolder, isAdmin, canView }) {
+function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded,
+  onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, onDeleteFolder, onRenameFolder,
+  isAdmin, canView,
+  dragState, onDragStart, onDragEnter, onDragLeave, onDrop, onDragEnd,
+}) {
   if (!canView(page)) return null
   const children = allPages.filter(p => p.parentId === page.id && canView(p))
   const hasChildren = children.length > 0
@@ -330,7 +334,6 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
   const [confirmDel, setConfirmDel] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [renameVal, setRenameVal] = useState(page.title)
-  const renameRef = useRef(null)
 
   const submitRename = () => {
     const trimmed = renameVal.trim()
@@ -338,10 +341,46 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
     setRenaming(false)
   }
 
+  const isDragging = dragState?.dragId === page.id
+  const dropPos   = dragState?.targetId === page.id ? dragState.position : null // 'before'|'after'|'inside'
+
+  const sharedItemProps = isAdmin ? {
+    draggable: true,
+    onDragStart: (e) => { e.stopPropagation(); onDragStart(page.id) },
+    onDragEnd:   (e) => { e.stopPropagation(); onDragEnd() },
+    onDragOver:  (e) => { e.preventDefault(); e.stopPropagation()
+      const rect = e.currentTarget.getBoundingClientRect()
+      const y = e.clientY - rect.top
+      const pos = isFolder
+        ? (y < rect.height * 0.3 ? 'before' : y > rect.height * 0.7 ? 'after' : 'inside')
+        : (y < rect.height / 2 ? 'before' : 'after')
+      onDragEnter(page.id, pos)
+    },
+    onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) onDragLeave(page.id) },
+    onDrop:      (e) => { e.preventDefault(); e.stopPropagation(); onDrop(page.id) },
+  } : {}
+
+  const childProps = { allPages, activeId, searchQuery, expandedIds, toggleExpanded,
+    onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, onDeleteFolder, onRenameFolder,
+    isAdmin, canView, dragState, onDragStart, onDragEnter, onDragLeave, onDrop, onDragEnd }
+
   return (
     <div>
-      <div className={`group flex items-center gap-0.5 rounded-xl transition-colors ${isActive && !isFolder ? 'bg-[#FECD28]/20 dark:bg-[#FECD28]/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+      {/* Drop-before indicator */}
+      {dropPos === 'before' && <div className="mx-2 h-0.5 rounded bg-[#FECD28]" />}
+
+      <div
+        {...sharedItemProps}
+        className={[
+          'group flex items-center gap-0.5 rounded-xl transition-colors select-none',
+          isDragging ? 'opacity-40' : '',
+          dropPos === 'inside' ? 'ring-2 ring-[#FECD28] bg-[#FECD28]/10' : '',
+          isActive && !isFolder && dropPos !== 'inside' ? 'bg-[#FECD28]/20 dark:bg-[#FECD28]/10' : '',
+          !isDragging && dropPos !== 'inside' && !(isActive && !isFolder) ? 'hover:bg-slate-100 dark:hover:bg-slate-800' : '',
+          isAdmin ? 'cursor-grab active:cursor-grabbing' : '',
+        ].filter(Boolean).join(' ')}
         style={{ paddingLeft: depth * 12 + 4 }}>
+
         {/* Expand toggle */}
         <button onClick={() => (hasChildren || isFolder) && toggleExpanded(page.id)}
           className={`p-0.5 shrink-0 text-slate-400 dark:text-slate-500 transition-colors ${(hasChildren || isFolder) ? 'hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer' : 'cursor-default opacity-0 pointer-events-none'}`}>
@@ -357,10 +396,10 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
 
         {/* Title */}
         {isFolder && renaming ? (
-          <input ref={renameRef} value={renameVal} onChange={e => setRenameVal(e.target.value)}
+          <input value={renameVal} onChange={e => setRenameVal(e.target.value)}
             onBlur={submitRename}
-            onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false) }}
-            autoFocus
+            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false) }}
+            autoFocus onClick={e => e.stopPropagation()}
             className="flex-1 min-w-0 py-1 px-1 text-sm font-semibold bg-white dark:bg-slate-700 border border-[#FECD28] rounded text-slate-900 dark:text-slate-100 focus:outline-none" />
         ) : (
           <button onClick={() => isFolder ? (isAdmin && setRenaming(true)) : onSelect(page)}
@@ -397,37 +436,31 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
             </span>
           )}
           {isAdmin && !isFolder && (
-            <>
-              <button onClick={e => { e.stopPropagation(); onMoveToFolder(page) }}
-                title="Move to folder"
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-                <Folder size={11} />
-              </button>
-              <button onClick={e => { e.stopPropagation(); onCreateSubpage(page.id) }}
-                title="New subpage"
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-                <Plus size={11} />
-              </button>
-            </>
+            <button onClick={e => { e.stopPropagation(); onCreateSubpage(page.id) }}
+              title="New subpage"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+              <Plus size={11} />
+            </button>
           )}
         </div>
       </div>
 
+      {/* Drop-after indicator (only when not a folder with children showing) */}
+      {dropPos === 'after' && !(isFolder && isExpanded && hasChildren) && <div className="mx-2 h-0.5 rounded bg-[#FECD28]" />}
+
       {/* Children */}
-      {(hasChildren || isFolder) && isExpanded && children
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map(child => (
-          <PageItem key={child.id} page={child} depth={depth + 1}
-            allPages={allPages} activeId={activeId} searchQuery={searchQuery}
-            expandedIds={expandedIds} toggleExpanded={toggleExpanded}
-            onSelect={onSelect} onCreateSubpage={onCreateSubpage}
-            onCreatePageInFolder={onCreatePageInFolder}
-            onMoveToFolder={onMoveToFolder}
-            onDeleteFolder={onDeleteFolder}
-            onRenameFolder={onRenameFolder}
-            isAdmin={isAdmin} canView={canView} />
-        ))
-      }
+      {(hasChildren || isFolder) && isExpanded && (
+        <div>
+          {children
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map(child => (
+              <PageItem key={child.id} page={child} depth={depth + 1} {...childProps} />
+            ))
+          }
+          {/* Drop-after-last-child indicator when folder expanded */}
+          {dropPos === 'after' && isFolder && isExpanded && hasChildren && <div className="mx-2 h-0.5 rounded bg-[#FECD28]" />}
+        </div>
+      )}
     </div>
   )
 }
@@ -475,7 +508,8 @@ export default function UserGuidePage() {
   const [deleting, setDeleting]     = useState(false)
 
   const [permsPage, setPermsPage]   = useState(null)
-  const [movingPage, setMovingPage] = useState(null) // page being moved to a folder
+  const [movingPage, setMovingPage] = useState(null)
+  const [dragState, setDragState]   = useState(null) // { dragId, targetId, position }
 
   const [imgUploading, setImgUploading] = useState(false)
   const [dragOver, setDragOver]         = useState(false)
@@ -623,6 +657,51 @@ export default function UserGuidePage() {
     if (LIVE) {
       try { await saveWikiPage({ id: folderId, title: newTitle }) }
       catch (err) { alert('Rename failed: ' + err.message) }
+    }
+  }
+
+  // ── Drag and drop reorder/move ──────────────────────────────────────────────
+  const onDragStart = (id) => setDragState({ dragId: id, targetId: null, position: null })
+  const onDragEnter = (targetId, position) => setDragState(s => s ? { ...s, targetId, position } : s)
+  const onDragLeave = () => setDragState(s => s ? { ...s, targetId: null, position: null } : s)
+  const onDragEnd   = () => setDragState(null)
+
+  const onDrop = (targetId) => {
+    if (!dragState?.dragId || dragState.dragId === targetId) { setDragState(null); return }
+    const { dragId, position } = dragState
+    setDragState(null)
+    const dragged = pages.find(p => p.id === dragId)
+    const target  = pages.find(p => p.id === targetId)
+    if (!dragged || !target) return
+
+    // Determine new parentId
+    const newParentId = position === 'inside' ? targetId : (target.parentId || null)
+
+    // Get siblings in the target parent, excluding the dragged item
+    const siblings = pages
+      .filter(p => (p.parentId || null) === newParentId && p.id !== dragId && !p.isFolder === !p.isFolder)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+    // Insert dragged item at the right position
+    let insertIdx = siblings.findIndex(p => p.id === targetId)
+    if (position === 'inside') insertIdx = siblings.length
+    else if (position === 'after') insertIdx = insertIdx + 1
+
+    const newSiblings = [...siblings]
+    newSiblings.splice(Math.max(0, insertIdx), 0, dragged)
+
+    // Assign sequential order values
+    const updates = newSiblings.map((p, i) => ({ ...p, order: i, parentId: newParentId }))
+
+    setPages(ps => {
+      const unchanged = ps.filter(p => !updates.find(u => u.id === p.id))
+      return [...unchanged, ...updates].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    })
+    if (position === 'inside') setExpandedIds(s => new Set([...s, targetId]))
+
+    if (LIVE) {
+      Promise.all(updates.map(u => saveWikiPage({ id: u.id, order: u.order, parentId: u.parentId })))
+        .catch(err => alert('Save order failed: ' + err.message))
     }
   }
 
@@ -842,7 +921,10 @@ export default function UserGuidePage() {
                     onMoveToFolder={setMovingPage}
                     onDeleteFolder={deleteFolder}
                     onRenameFolder={renameFolder}
-                    isAdmin={isAdmin} canView={canView} />
+                    isAdmin={isAdmin} canView={canView}
+                    dragState={dragState}
+                    onDragStart={onDragStart} onDragEnter={onDragEnter}
+                    onDragLeave={onDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} />
                 ))
           )}
         </nav>

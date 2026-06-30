@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react'
 import { mockOrders, mockHistory, STATUS } from './mockData'
 import { AuthProvider, useAuth, landingTab } from './context/AuthContext'
 import { ActivityProvider, useActivity } from './context/ActivityContext'
@@ -13,14 +13,17 @@ import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
 import OrdersTable from './components/OrdersTable'
 import OrderPanel from './components/OrderPanel'
-import UploadTab from './components/UploadTab'
-import DispatchTab from './components/DispatchTab'
-import StagedTab from './components/StagedTab'
-import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
-import WHUploadsPage, { buildWHNotifications } from './components/WHUploadsPage'
-import GlassPricingPage from './components/GlassPricingPage'
-import UserGuidePage from './components/UserGuidePage'
+import { buildWHNotifications } from './utils/whNotifications'
+
+// Lazy-loaded tab pages — each only downloads when first visited
+const AdminPage      = lazy(() => import('./components/AdminPage'))
+const WHUploadsPage  = lazy(() => import('./components/WHUploadsPage'))
+const GlassPricingPage = lazy(() => import('./components/GlassPricingPage'))
+const UserGuidePage  = lazy(() => import('./components/UserGuidePage'))
+const UploadTab      = lazy(() => import('./components/UploadTab'))
+const DispatchTab    = lazy(() => import('./components/DispatchTab'))
+const StagedTab      = lazy(() => import('./components/StagedTab'))
 
 function Dashboard() {
   const { user, can, perm } = useAuth()
@@ -265,7 +268,7 @@ function Dashboard() {
       return next
     })
     setOrders(prev => prev.map(o => o.id === id ? { ...o, backOrder: willFlag } : o))
-    addLog(user, willFlag ? 'Flagged as awaiting stock' : 'Cleared awaiting stock flag', `PS ${order.psNo}`)
+    addLog(user, willFlag ? 'Flagged as back order' : 'Cleared back order flag', `PS ${order.psNo}`)
     if (LIVE) apiSetBackOrder(order.psNo, willFlag).catch(err => console.error('Back-order update failed:', err))
   }
 
@@ -373,7 +376,8 @@ function Dashboard() {
             Loading orders…
           </div>
         ) : (
-          <>
+          <Suspense fallback={<div className="flex items-center justify-center py-32 text-slate-400 gap-3"><span className="w-5 h-5 border-2 border-slate-300 border-t-brand rounded-full animate-spin" />Loading…</div>}>
+            <>
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
             {activeTab === 'pricing'  && <GlassPricingPage />}
@@ -412,6 +416,7 @@ function Dashboard() {
               </>
             )}
           </>
+          </Suspense>
         )}
       </main>
 

@@ -481,7 +481,7 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-orange-300 hover:bg-orange-50/50 dark:hover:border-orange-700'}`}>
                     <span className="flex items-center gap-2">
                       <PackageSearch size={15} />
-                      {order.backOrder ? 'Awaiting stock' : 'Mark as awaiting stock'}
+                      {order.backOrder ? 'Back Order' : 'Mark as back order'}
                     </span>
                     {order.backOrder && (
                       <span className="text-xs font-medium text-orange-500 dark:text-orange-400">Click to clear</span>

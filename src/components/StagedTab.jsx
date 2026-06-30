@@ -278,9 +278,9 @@ export default function StagedTab({ orders, stagedIds, onTogglePicked, onSaveNot
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Back Orders — awaiting stock</span>
                 <span className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-full px-2 py-0.5 font-semibold">{backOrders.length}</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {backOrders.map(o => (
-                  <div key={o.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+                  <div key={o.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 opacity-50">
                     <button onClick={() => setDetailId(o.id)} className="w-full text-left">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div>

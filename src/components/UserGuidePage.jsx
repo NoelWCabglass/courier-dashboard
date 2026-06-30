@@ -628,15 +628,21 @@ export default function UserGuidePage() {
             {/* Content area */}
             <div className={editing ? '' : 'p-6 sm:p-8'}>
               {editing ? (
-                <textarea
-                  ref={textareaRef}
-                  value={draft}
-                  onChange={e => setDraft(e.target.value)}
-                  rows={34}
-                  spellCheck
-                  className="w-full font-mono text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-5 focus:outline-none leading-relaxed resize-none border-0"
-                  placeholder="Start writing in Markdown…"
-                />
+                /* Split pane: raw markdown left, live preview right */
+                <div className="flex divide-x divide-slate-200 dark:divide-slate-700" style={{ minHeight: '520px' }}>
+                  <textarea
+                    ref={textareaRef}
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    spellCheck
+                    className="w-1/2 font-mono text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-5 focus:outline-none leading-relaxed resize-none border-0 self-stretch"
+                    placeholder="Start writing in Markdown…"
+                    style={{ minHeight: '520px' }}
+                  />
+                  <article className="w-1/2 p-5 overflow-y-auto text-sm leading-relaxed bg-slate-50/50 dark:bg-slate-900/30 self-stretch" style={{ minHeight: '520px' }}>
+                    {draft.trim() ? renderMarkdown(draft) : <span className="text-slate-300 dark:text-slate-600 italic select-none">Preview will appear here…</span>}
+                  </article>
+                </div>
               ) : loadingContent ? (
                 <div className="flex items-center gap-3 py-20 justify-center text-slate-400">
                   <span className="w-5 h-5 border-2 border-slate-300 border-t-brand rounded-full animate-spin" />

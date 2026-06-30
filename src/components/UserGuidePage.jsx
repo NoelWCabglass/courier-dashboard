@@ -411,8 +411,8 @@ export default function UserGuidePage() {
     setLoadingContent(true)
     setContent('')
     fetchWikiPage(activePage.id)
-      .then(c => setContent(c || SEED_CONTENT))
-      .catch(() => setContent(SEED_CONTENT))
+      .then(c => setContent(c || ''))
+      .catch(() => setContent(''))
       .finally(() => setLoadingContent(false))
   }, [activePage?.id])
 

@@ -204,9 +204,11 @@ export default function StagedTab({ orders, stagedIds, onTogglePicked, onSaveNot
     return true
   }), [staged, search])
 
-  const sorted = [...filtered].sort((a, b) => (stagedIds.has(a.id) ? 1 : 0) - (stagedIds.has(b.id) ? 1 : 0))
-  const toPick = staged.filter(o => !stagedIds.has(o.id)).length
-  const picked = staged.filter(o => stagedIds.has(o.id)).length
+  const backOrders = filtered.filter(o => o.backOrder)
+  const active = filtered.filter(o => !o.backOrder)
+  const sorted = [...active].sort((a, b) => (stagedIds.has(a.id) ? 1 : 0) - (stagedIds.has(b.id) ? 1 : 0))
+  const toPick = active.filter(o => !stagedIds.has(o.id)).length
+  const picked = active.filter(o => stagedIds.has(o.id)).length
 
   if (detailOrder) {
     return (
@@ -252,7 +254,7 @@ export default function StagedTab({ orders, stagedIds, onTogglePicked, onSaveNot
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={18} /></button>}
       </div>
 
-      {sorted.length === 0 ? (
+      {sorted.length === 0 && backOrders.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-16 text-center">
           <PackageCheck size={36} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400 dark:text-slate-500 text-base">
@@ -260,12 +262,43 @@ export default function StagedTab({ orders, stagedIds, onTogglePicked, onSaveNot
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {sorted.map(o => (
-            <StagedCard key={o.id} order={o} isPicked={stagedIds.has(o.id)}
-              onOpen={setDetailId} onTogglePicked={onTogglePicked} />
-          ))}
-        </div>
+        <>
+          {sorted.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {sorted.map(o => (
+                <StagedCard key={o.id} order={o} isPicked={stagedIds.has(o.id)}
+                  onOpen={setDetailId} onTogglePicked={onTogglePicked} />
+              ))}
+            </div>
+          )}
+
+          {backOrders.length > 0 && (
+            <div className={sorted.length > 0 ? 'mt-6' : ''}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Back Orders — awaiting stock</span>
+                <span className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-full px-2 py-0.5 font-semibold">{backOrders.length}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-50">
+                {backOrders.map(o => (
+                  <div key={o.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+                    <button onClick={() => setDetailId(o.id)} className="w-full text-left">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div>
+                          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{o.psNo}</p>
+                          <p className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{o.customer.company}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{o.address.city}, {o.address.province}</p>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full px-2.5 py-1 shrink-0">
+                          Back Order
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

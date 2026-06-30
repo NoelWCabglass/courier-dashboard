@@ -16,6 +16,7 @@ import OrderPanel from './components/OrderPanel'
 import LoginPage from './components/LoginPage'
 import { buildWHNotifications } from './utils/whNotifications'
 import AdminPage from './components/AdminPage'
+import UserGuidePage from './components/UserGuidePage'
 import WHUploadsPage from './components/WHUploadsPage'
 import GlassPricingPage from './components/GlassPricingPage'
 import UploadTab from './components/UploadTab'
@@ -377,6 +378,7 @@ function Dashboard() {
             {activeTab === 'upload'   && <UploadTab onUploaded={loadOrders} />}
             {activeTab === 'wh'       && <WHUploadsPage whData={whData} onRefresh={loadWHData} />}
             {activeTab === 'pricing'  && <GlassPricingPage />}
+            {activeTab === 'userguide' && <UserGuidePage />}
             {activeTab === 'staged' && (
               <StagedTab orders={orders} stagedIds={stagedIds} onTogglePicked={toggleStaged} onSaveNote={saveOrderNote} />
             )}

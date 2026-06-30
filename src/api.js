@@ -90,23 +90,34 @@ export async function fetchUserGuide() {
 }
 export const saveUserGuide = (payload) => post('saveUserGuide', payload)
 
-// Wiki (multi-page)
+// Wiki — backed by Vercel/Upstash via /api/wiki (fast, no Apps Script)
+const WIKI_URL = '/api/wiki'
+
+async function wikiPost(action, body = {}) {
+  const res = await fetch(WIKI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...body }),
+  })
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Wiki request failed')
+  return data
+}
+
 export async function fetchWikiPages() {
-  const url = `${API_URL}?action=getWikiPages&secret=${encodeURIComponent(API_SECRET)}`
-  const res = await fetch(url)
+  const res = await fetch(`${WIKI_URL}?action=getPages`)
   const data = await res.json()
   if (!data.ok) throw new Error(data.error || 'Failed to load wiki pages')
   return data.pages || []
 }
 export async function fetchWikiPage(id) {
-  const url = `${API_URL}?action=getWikiPage&id=${encodeURIComponent(id)}&secret=${encodeURIComponent(API_SECRET)}`
-  const res = await fetch(url)
+  const res = await fetch(`${WIKI_URL}?action=getPage&id=${encodeURIComponent(id)}`)
   const data = await res.json()
   if (!data.ok) throw new Error(data.error || 'Failed to load page')
   return data.content || ''
 }
-export const saveWikiPage    = (payload) => post('saveWikiPage', payload)
-export const deleteWikiPage  = (payload) => post('deleteWikiPage', payload)
-export const uploadWikiImage = (payload) => post('uploadWikiImage', payload)
+export const saveWikiPage   = (payload) => wikiPost('savePage', payload)
+export const deleteWikiPage = (payload) => wikiPost('deletePage', payload)
+export const uploadWikiImage = (payload) => wikiPost('uploadImage', payload)
 
 export { LIVE }

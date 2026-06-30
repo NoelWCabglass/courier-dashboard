@@ -38,7 +38,7 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
 
   const ordersActive = activeTab === 'orders' || activeTab === 'upload' || activeTab === 'history'
   const warehouseActive = activeTab === 'staged' || activeTab === 'dispatch' || activeTab === 'wh'
-  const generalActive = activeTab === 'pricing'
+  const generalActive = activeTab === 'pricing' || activeTab === 'userguide'
 
   // Items that live under the Warehouse dropdown (non-dispatch roles)
   const warehouseItems = [
@@ -49,7 +49,8 @@ export default function Header({ activeTab, setActiveTab, onRefresh, refreshing,
 
   // Items under the General dropdown
   const generalItems = [
-    { key: 'pricing', label: 'Pricing', show: perm('pricing', 'view') },
+    { key: 'userguide', label: 'User Guide', show: true },
+    { key: 'pricing',   label: 'Pricing',    show: perm('pricing', 'view') },
   ].filter(t => t.show)
 
   const btnCls = (active) =>

@@ -320,7 +320,7 @@ function MoveToFolderModal({ page, folders, onMove, onClose }) {
 }
 
 // ─── Sidebar tree item ────────────────────────────────────────────────────────
-function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, onDeleteFolder, isAdmin, canView }) {
+function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, onDeleteFolder, onRenameFolder, isAdmin, canView }) {
   if (!canView(page)) return null
   const children = allPages.filter(p => p.parentId === page.id && canView(p))
   const hasChildren = children.length > 0
@@ -328,6 +328,15 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
   const isExpanded = expandedIds.has(page.id)
   const isFolder = page.isFolder
   const [confirmDel, setConfirmDel] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [renameVal, setRenameVal] = useState(page.title)
+  const renameRef = useRef(null)
+
+  const submitRename = () => {
+    const trimmed = renameVal.trim()
+    if (trimmed && trimmed !== page.title) onRenameFolder(page.id, trimmed)
+    setRenaming(false)
+  }
 
   return (
     <div>
@@ -347,10 +356,18 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
         </span>
 
         {/* Title */}
-        <button onClick={() => !isFolder && onSelect(page)}
-          className={`flex-1 min-w-0 text-left py-1.5 text-sm truncate ${isFolder ? 'font-semibold text-slate-700 dark:text-slate-200 cursor-default' : isActive ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
-          <Highlight text={page.title} query={searchQuery} />
-        </button>
+        {isFolder && renaming ? (
+          <input ref={renameRef} value={renameVal} onChange={e => setRenameVal(e.target.value)}
+            onBlur={submitRename}
+            onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false) }}
+            autoFocus
+            className="flex-1 min-w-0 py-1 px-1 text-sm font-semibold bg-white dark:bg-slate-700 border border-[#FECD28] rounded text-slate-900 dark:text-slate-100 focus:outline-none" />
+        ) : (
+          <button onClick={() => isFolder ? (isAdmin && setRenaming(true)) : onSelect(page)}
+            className={`flex-1 min-w-0 text-left py-1.5 text-sm truncate ${isFolder ? 'font-semibold text-slate-700 dark:text-slate-200' : isActive ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
+            <Highlight text={page.title} query={searchQuery} />
+          </button>
+        )}
 
         {/* Action icons */}
         <div className="flex items-center gap-0.5 pr-1 shrink-0">
@@ -407,6 +424,7 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
             onCreatePageInFolder={onCreatePageInFolder}
             onMoveToFolder={onMoveToFolder}
             onDeleteFolder={onDeleteFolder}
+            onRenameFolder={onRenameFolder}
             isAdmin={isAdmin} canView={canView} />
         ))
       }
@@ -597,6 +615,15 @@ export default function UserGuidePage() {
       if (LIVE) await Promise.all(children.map(c => saveWikiPage({ id: c.id, parentId: null })))
       setPages(ps => ps.filter(p => p.id !== folderId).map(p => p.parentId === folderId ? { ...p, parentId: null } : p))
     } catch (err) { alert('Delete failed: ' + err.message) }
+  }
+
+  // ── Rename folder ───────────────────────────────────────────────────────────
+  const renameFolder = async (folderId, newTitle) => {
+    setPages(ps => ps.map(p => p.id === folderId ? { ...p, title: newTitle } : p))
+    if (LIVE) {
+      try { await saveWikiPage({ id: folderId, title: newTitle }) }
+      catch (err) { alert('Rename failed: ' + err.message) }
+    }
   }
 
   // ── Move page to folder ─────────────────────────────────────────────────────
@@ -814,6 +841,7 @@ export default function UserGuidePage() {
                     onCreatePageInFolder={createPageInFolder}
                     onMoveToFolder={setMovingPage}
                     onDeleteFolder={deleteFolder}
+                    onRenameFolder={renameFolder}
                     isAdmin={isAdmin} canView={canView} />
                 ))
           )}

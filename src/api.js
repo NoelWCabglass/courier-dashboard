@@ -80,7 +80,7 @@ export async function fetchGlassPricing() {
 }
 export const saveGlassPricing = (pricing) => post('saveGlassPricing', { pricing })
 
-// User Guide (editable help page)
+// User Guide (legacy single-page — kept for backwards compat)
 export async function fetchUserGuide() {
   const url = `${API_URL}?action=getUserGuide&secret=${encodeURIComponent(API_SECRET)}`
   const res = await fetch(url)
@@ -88,7 +88,25 @@ export async function fetchUserGuide() {
   if (!data.ok) throw new Error(data.error || 'Failed to load user guide')
   return data.guide
 }
-// payload may contain { content } and/or { editorUsername }, plus updatedBy
 export const saveUserGuide = (payload) => post('saveUserGuide', payload)
+
+// Wiki (multi-page)
+export async function fetchWikiPages() {
+  const url = `${API_URL}?action=getWikiPages&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load wiki pages')
+  return data.pages || []
+}
+export async function fetchWikiPage(id) {
+  const url = `${API_URL}?action=getWikiPage&id=${encodeURIComponent(id)}&secret=${encodeURIComponent(API_SECRET)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to load page')
+  return data.content || ''
+}
+export const saveWikiPage    = (payload) => post('saveWikiPage', payload)
+export const deleteWikiPage  = (payload) => post('deleteWikiPage', payload)
+export const uploadWikiImage = (payload) => post('uploadWikiImage', payload)
 
 export { LIVE }

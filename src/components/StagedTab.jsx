@@ -149,6 +149,11 @@ function StagedCard({ order, isPicked, onOpen, onTogglePicked }) {
             </p>
             <p className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{order.customer.company}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{order.address.city}, {order.address.province}</p>
+            {order.stagedAt && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                Staged {new Date(order.stagedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400">{order.status}</span>

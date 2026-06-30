@@ -53,11 +53,23 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, d
           <span className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg px-3 py-1.5">{totalParcels} parcels</span>
           <span className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg px-3 py-1.5">{totalWeight.toFixed(1)} kg total</span>
         </div>
-        {order.bookedAt && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-3">
-            Booked {new Date(order.bookedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
-          </p>
-        )}
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-3">
+          {order.bookedAt && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Booked {new Date(order.bookedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          )}
+          {order.stagedAt && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Staged {new Date(order.stagedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          )}
+          {order.dispatchedAt && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Dispatched {new Date(order.dispatchedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Waybill */}
@@ -184,11 +196,18 @@ function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
           <span className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg px-2.5 py-1">{totalParcels} parcels</span>
           <span className="text-sm font-mono font-semibold text-slate-500 dark:text-slate-400">{order.waybillNo || 'No waybill'}</span>
         </div>
-        {order.bookedAt && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
-            Booked {new Date(order.bookedAt).toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-          </p>
-        )}
+        <div className="flex flex-wrap gap-x-3 mt-1.5">
+          {order.bookedAt && (
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Booked {new Date(order.bookedAt).toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+          {order.stagedAt && (
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Staged {new Date(order.stagedAt).toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
       </button>
 
       {/* Stage buttons */}

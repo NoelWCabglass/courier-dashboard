@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   BookOpen, Plus, Lock, Unlock, Trash2, Pencil, Check, X,
-  ImageIcon, Link2, Bold, Italic, Heading1, Heading2, Heading3,
-  List, ListOrdered, Minus, ChevronRight, AlertCircle, Loader2,
+  Image as ImageIcon, Link2, Bold, Italic, Strikethrough,
+  Heading1, Heading2, Heading3,
+  List, ListOrdered, Minus, Quote,
+  Code, FileCode2,
+  ChevronRight, AlertCircle, Loader2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -11,7 +14,7 @@ import {
   saveWikiPage, deleteWikiPage, uploadWikiImage,
 } from '../api'
 
-// ─── Default seed content ────────────────────────────────────────────────────
+// ─── Seed / fallback content ──────────────────────────────────────────────────
 const SEED_CONTENT = `# CabGlass Courier User Guide
 
 _Last updated: 15 May 2026_
@@ -93,13 +96,10 @@ When back-ordered stock arrives to complete the order:
 
 **Important:** Always ensure that the booking contents match the invoice exactly.`
 
-// ─── Markdown renderer ───────────────────────────────────────────────────────
-// Supports: headings, bullets, ordered lists, **bold**, _italic_, `code`,
-//           [link](url), ![img](url), ---, code fences.
-
+// ─── Markdown renderer ────────────────────────────────────────────────────────
 function renderInline(text, keyBase) {
   const parts = text
-    .split(/(\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|!\[[^\]]*\]\([^)]*\)|\[[^\]]*\]\([^)]*\))/g)
+    .split(/(\*\*[^*]+\*\*|_[^_]+_|~~[^~]+~~|`[^`]+`|!\[[^\]]*\]\([^)]*\)|\[[^\]]*\]\([^)]*\))/g)
     .filter(Boolean)
 
   return parts.map((p, i) => {
@@ -108,12 +108,16 @@ function renderInline(text, keyBase) {
       return <strong key={k}>{p.slice(2, -2)}</strong>
     if (p.startsWith('_') && p.endsWith('_'))
       return <em key={k}>{p.slice(1, -1)}</em>
+    if (p.startsWith('~~') && p.endsWith('~~'))
+      return <s key={k}>{p.slice(2, -2)}</s>
     if (p.startsWith('`') && p.endsWith('`'))
       return <code key={k} className="bg-slate-100 dark:bg-slate-700 rounded px-1 py-0.5 text-[0.8em] font-mono text-slate-800 dark:text-slate-200">{p.slice(1, -1)}</code>
     const imgM = p.match(/^!\[([^\]]*)\]\(([^)]*)\)$/)
-    if (imgM) return <img key={k} src={imgM[2]} alt={imgM[1]} className="max-w-full rounded-lg my-2 border border-slate-200 dark:border-slate-700 block" />
+    if (imgM)
+      return <img key={k} src={imgM[2]} alt={imgM[1]} className="max-w-full rounded-lg my-2 border border-slate-200 dark:border-slate-700 block" />
     const linkM = p.match(/^\[([^\]]*)\]\(([^)]*)\)$/)
-    if (linkM) return <a key={k} href={linkM[2]} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700">{linkM[1]}</a>
+    if (linkM)
+      return <a key={k} href={linkM[2]} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700">{linkM[1]}</a>
     return <span key={k}>{p}</span>
   })
 }
@@ -124,10 +128,10 @@ function renderMarkdown(md) {
   let i = 0, key = 0
   const isBullet  = l => /^\s*[-*●]\s+/.test(l)
   const isOrdered = l => /^\s*\d+\.\s+/.test(l)
+  const isQuote   = l => /^>\s?/.test(l)
 
   while (i < lines.length) {
     const line = lines[i]
-
     if (!line.trim()) { i++; continue }
 
     // Code fence
@@ -150,13 +154,27 @@ function renderMarkdown(md) {
       i++; continue
     }
 
-    if (line.startsWith('### '))
-      { blocks.push(<h3 key={key++} className="text-base font-bold text-slate-800 dark:text-slate-100 mt-5 mb-1.5">{renderInline(line.slice(4), key)}</h3>); i++; continue }
-    if (line.startsWith('## '))
-      { blocks.push(<h2 key={key++} className="text-xl font-bold text-slate-900 dark:text-white mt-7 mb-2 pb-1 border-b border-slate-200 dark:border-slate-700">{renderInline(line.slice(3), key)}</h2>); i++; continue }
-    if (line.startsWith('# '))
-      { blocks.push(<h1 key={key++} className="text-2xl font-extrabold text-slate-900 dark:text-white mb-1">{renderInline(line.slice(2), key)}</h1>); i++; continue }
+    // Headings
+    if (line.startsWith('### ')) { blocks.push(<h3 key={key++} className="text-base font-bold text-slate-800 dark:text-slate-100 mt-5 mb-1.5">{renderInline(line.slice(4), key)}</h3>); i++; continue }
+    if (line.startsWith('## '))  { blocks.push(<h2 key={key++} className="text-xl font-bold text-slate-900 dark:text-white mt-7 mb-2 pb-1 border-b border-slate-200 dark:border-slate-700">{renderInline(line.slice(3), key)}</h2>); i++; continue }
+    if (line.startsWith('# '))   { blocks.push(<h1 key={key++} className="text-2xl font-extrabold text-slate-900 dark:text-white mb-1">{renderInline(line.slice(2), key)}</h1>); i++; continue }
 
+    // Blockquote
+    if (isQuote(line)) {
+      const qlines = []
+      while (i < lines.length && isQuote(lines[i])) {
+        qlines.push(lines[i].replace(/^>\s?/, ''))
+        i++
+      }
+      blocks.push(
+        <blockquote key={key++} className="border-l-4 border-[#FECD28] pl-4 my-3 italic text-slate-500 dark:text-slate-400">
+          {qlines.map((ql, qi) => <p key={qi} className="my-0.5">{renderInline(ql, `bq${key}-${qi}`)}</p>)}
+        </blockquote>
+      )
+      continue
+    }
+
+    // Bullet list
     if (isBullet(line)) {
       const items = []
       while (i < lines.length && isBullet(lines[i])) {
@@ -167,6 +185,7 @@ function renderMarkdown(md) {
       continue
     }
 
+    // Ordered list
     if (isOrdered(line)) {
       const items = []
       while (i < lines.length && isOrdered(lines[i])) {
@@ -186,27 +205,30 @@ function renderMarkdown(md) {
 
     // Paragraph
     const para = []
-    while (i < lines.length && lines[i].trim() && !isBullet(lines[i]) && !isOrdered(lines[i]) && !lines[i].startsWith('#') && lines[i].trim() !== '---' && !lines[i].startsWith('```')) {
+    while (i < lines.length && lines[i].trim() && !isBullet(lines[i]) && !isOrdered(lines[i]) && !isQuote(lines[i]) && !lines[i].startsWith('#') && lines[i].trim() !== '---' && !lines[i].startsWith('```')) {
       para.push(lines[i])
       i++
     }
     blocks.push(<p key={key++} className="my-2 leading-relaxed text-slate-700 dark:text-slate-300">{renderInline(para.join(' '), `p${key}`)}</p>)
   }
-
   return blocks
 }
 
-// ─── Toolbar button ───────────────────────────────────────────────────────────
-function ToolBtn({ icon: Icon, label, onClick, disabled, active }) {
+// ─── Toolbar ──────────────────────────────────────────────────────────────────
+function Sep() {
+  return <span className="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-0.5 shrink-0" />
+}
+
+function ToolBtn({ icon: Icon, label, onClick, disabled, spin }) {
   return (
     <button
       type="button"
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className={`p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-40 ${active ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : ''}`}
+      className="flex items-center justify-center w-7 h-7 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-800 dark:hover:text-slate-100 transition-colors disabled:opacity-40 shrink-0"
     >
-      <Icon size={14} />
+      <Icon size={15} className={spin ? 'animate-spin' : ''} />
     </button>
   )
 }
@@ -216,27 +238,23 @@ export default function UserGuidePage() {
   const { user, perm } = useAuth()
   const isAdmin = perm('admin', 'view')
 
-  // Page list
-  const [pages, setPages]         = useState([])
+  const [pages, setPages]           = useState([])
   const [activePage, setActivePage] = useState(null)
-  const [content, setContent]     = useState('')
-  const [loadingPages, setLoadingPages]   = useState(LIVE)
+  const [content, setContent]       = useState('')
+  const [loadingPages, setLoadingPages]     = useState(LIVE)
   const [loadingContent, setLoadingContent] = useState(false)
 
-  // Edit state
-  const [editing, setEditing]     = useState(false)
-  const [draft, setDraft]         = useState('')
+  const [editing, setEditing]       = useState(false)
+  const [draft, setDraft]           = useState('')
   const [draftTitle, setDraftTitle] = useState('')
-  const [saving, setSaving]       = useState(false)
+  const [saving, setSaving]         = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
 
-  // Delete confirm
   const [deleteConfirm, setDeleteConfirm] = useState(false)
-  const [deleting, setDeleting]   = useState(false)
-
-  // Image upload
+  const [deleting, setDeleting]     = useState(false)
   const [imgUploading, setImgUploading] = useState(false)
-  const textareaRef = useRef(null)
+
+  const textareaRef  = useRef(null)
   const imageInputRef = useRef(null)
 
   // ── Load page list ──────────────────────────────────────────────────────────
@@ -259,10 +277,9 @@ export default function UserGuidePage() {
       .finally(() => setLoadingPages(false))
   }, [])
 
-  // ── Load page content when active page changes ───────────────────────────────
+  // ── Load page content ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!activePage) return
-    if (!LIVE) return
+    if (!activePage || !LIVE) return
     setLoadingContent(true)
     setContent('')
     fetchWikiPage(activePage.id)
@@ -271,51 +288,47 @@ export default function UserGuidePage() {
       .finally(() => setLoadingContent(false))
   }, [activePage?.id])
 
-  // ── Select a page ───────────────────────────────────────────────────────────
+  // ── Navigation ──────────────────────────────────────────────────────────────
   const selectPage = (page) => {
-    if (editing) return // guard: warn or ignore while editing
+    if (editing) return
     setActivePage(page)
     setDeleteConfirm(false)
   }
 
-  // ── Create new page ─────────────────────────────────────────────────────────
+  // ── Create page ─────────────────────────────────────────────────────────────
   const createPage = async () => {
-    const title = 'New Page'
-    const payload = { title, content: '', updatedBy: user?.name || user?.username || '' }
+    const payload = { title: 'New Page', content: '', updatedBy: user?.name || user?.username || '' }
     if (LIVE) {
       try {
         const res = await saveWikiPage(payload)
-        const newPage = res.page
-        setPages(ps => [...ps, newPage])
-        setActivePage(newPage)
+        const p = res.page
+        setPages(ps => [...ps, p])
+        setActivePage(p)
         setContent('')
         setDraft('')
-        setDraftTitle(newPage.title)
+        setDraftTitle(p.title)
         setEditing(true)
       } catch (err) { alert('Could not create page: ' + err.message) }
     } else {
-      const newPage = { id: 'mock' + Date.now(), title, locked: false, updatedAt: new Date().toISOString(), updatedBy: '', order: pages.length }
-      setPages(ps => [...ps, newPage])
-      setActivePage(newPage)
+      const p = { id: 'mock' + Date.now(), title: 'New Page', locked: false, updatedAt: new Date().toISOString(), updatedBy: '', order: pages.length }
+      setPages(ps => [...ps, p])
+      setActivePage(p)
       setContent('')
       setDraft('')
-      setDraftTitle(title)
+      setDraftTitle(p.title)
       setEditing(true)
     }
   }
 
-  // ── Toggle lock ─────────────────────────────────────────────────────────────
+  // ── Lock toggle ─────────────────────────────────────────────────────────────
   const toggleLock = async () => {
     if (!activePage) return
-    const newLocked = !activePage.locked
-    const updated = { ...activePage, locked: newLocked }
+    const updated = { ...activePage, locked: !activePage.locked }
     setActivePage(updated)
     setPages(ps => ps.map(p => p.id === updated.id ? updated : p))
     if (LIVE) {
-      try {
-        await saveWikiPage({ id: activePage.id, locked: newLocked, updatedBy: user?.name || '' })
-      } catch (err) {
-        // revert
+      try { await saveWikiPage({ id: activePage.id, locked: updated.locked, updatedBy: user?.name || '' }) }
+      catch (err) {
         setActivePage(activePage)
         setPages(ps => ps.map(p => p.id === activePage.id ? activePage : p))
         alert('Could not update lock: ' + err.message)
@@ -323,7 +336,7 @@ export default function UserGuidePage() {
     }
   }
 
-  // ── Delete page ─────────────────────────────────────────────────────────────
+  // ── Delete ──────────────────────────────────────────────────────────────────
   const confirmDelete = async () => {
     if (!activePage || activePage.locked) return
     setDeleting(true)
@@ -332,16 +345,12 @@ export default function UserGuidePage() {
       const remaining = pages.filter(p => p.id !== activePage.id)
       setPages(remaining)
       setActivePage(remaining[0] || null)
-      setContent(remaining[0] ? '' : '')
       setDeleteConfirm(false)
-    } catch (err) {
-      alert('Delete failed: ' + err.message)
-    } finally {
-      setDeleting(false)
-    }
+    } catch (err) { alert('Delete failed: ' + err.message) }
+    finally { setDeleting(false) }
   }
 
-  // ── Start / cancel edit ─────────────────────────────────────────────────────
+  // ── Edit ────────────────────────────────────────────────────────────────────
   const startEdit = () => {
     setDraft(content)
     setDraftTitle(activePage?.title || '')
@@ -349,89 +358,85 @@ export default function UserGuidePage() {
     setDeleteConfirm(false)
   }
 
-  const cancelEdit = () => {
-    setEditing(false)
-    setDraft('')
-    setDraftTitle('')
-  }
+  const cancelEdit = () => { setEditing(false); setDraft(''); setDraftTitle('') }
 
-  // ── Save edit ───────────────────────────────────────────────────────────────
   const saveEdit = async () => {
     if (!activePage) return
     setSaving(true)
-    const payload = {
-      id: activePage.id,
-      title: draftTitle.trim() || activePage.title,
-      content: draft,
-      updatedBy: user?.name || user?.username || '',
-    }
+    const payload = { id: activePage.id, title: draftTitle.trim() || activePage.title, content: draft, updatedBy: user?.name || user?.username || '' }
     try {
-      let updatedPage = { ...activePage, title: payload.title, updatedAt: new Date().toISOString(), updatedBy: payload.updatedBy }
-      if (LIVE) {
-        const res = await saveWikiPage(payload)
-        updatedPage = res.page || updatedPage
-      }
+      let updated = { ...activePage, title: payload.title, updatedAt: new Date().toISOString(), updatedBy: payload.updatedBy }
+      if (LIVE) { const res = await saveWikiPage(payload); updated = res.page || updated }
       setContent(draft)
-      setActivePage(updatedPage)
-      setPages(ps => ps.map(p => p.id === updatedPage.id ? updatedPage : p))
+      setActivePage(updated)
+      setPages(ps => ps.map(p => p.id === updated.id ? updated : p))
       setEditing(false)
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 2000)
-    } catch (err) {
-      alert('Save failed: ' + err.message)
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { alert('Save failed: ' + err.message) }
+    finally { setSaving(false) }
   }
 
-  // ── Markdown toolbar ────────────────────────────────────────────────────────
+  // ── Format helpers ──────────────────────────────────────────────────────────
   const applyFormat = useCallback((type) => {
     const ta = textareaRef.current
     if (!ta) return
-    const start  = ta.selectionStart
-    const end    = ta.selectionEnd
-    const value  = ta.value
-    const sel    = value.slice(start, end)
+    const start = ta.selectionStart
+    const end   = ta.selectionEnd
+    const val   = ta.value
+    const sel   = val.slice(start, end)
     let result, cs, ce
 
-    if (type === 'bold') {
-      const t = sel || 'bold text'
-      result = value.slice(0, start) + `**${t}**` + value.slice(end)
-      cs = start + 2; ce = cs + t.length
-    } else if (type === 'italic') {
-      const t = sel || 'italic text'
-      result = value.slice(0, start) + `_${t}_` + value.slice(end)
-      cs = start + 1; ce = cs + t.length
-    } else if (type === 'h1' || type === 'h2' || type === 'h3') {
-      const prefix = type === 'h1' ? '# ' : type === 'h2' ? '## ' : '### '
-      const ls = value.lastIndexOf('\n', start - 1) + 1
-      const stripped = value.slice(ls).replace(/^#{1,3} /, '')
-      result = value.slice(0, ls) + prefix + stripped
+    const wrapInline = (open, close, placeholder) => {
+      const t = sel || placeholder
+      result = val.slice(0, start) + open + t + close + val.slice(end)
+      cs = start + open.length; ce = cs + t.length
+    }
+
+    const prefixLine = (prefix) => {
+      const ls = val.lastIndexOf('\n', start - 1) + 1
+      const stripped = val.slice(ls).replace(/^(#{1,3} |> |- |\d+\. )/, '')
+      result = val.slice(0, ls) + prefix + stripped
       cs = ce = ls + prefix.length
-    } else if (type === 'hr') {
-      result = value.slice(0, start) + '\n---\n' + value.slice(end)
-      cs = ce = start + 5
-    } else if (type === 'bullet') {
-      const ls = value.lastIndexOf('\n', start - 1) + 1
-      result = value.slice(0, ls) + '- ' + value.slice(ls)
-      cs = ce = start + 2
-    } else if (type === 'ordered') {
-      const ls = value.lastIndexOf('\n', start - 1) + 1
-      result = value.slice(0, ls) + '1. ' + value.slice(ls)
-      cs = ce = start + 3
-    } else if (type === 'link') {
-      const url = prompt('Enter URL:')
-      if (!url) return
-      const t = sel || 'link text'
-      result = value.slice(0, start) + `[${t}](${url})` + value.slice(end)
-      cs = start; ce = start + `[${t}](${url})`.length
-    } else { return }
+    }
+
+    switch (type) {
+      case 'bold':        wrapInline('**', '**', 'bold text'); break
+      case 'italic':      wrapInline('_', '_', 'italic text'); break
+      case 'strike':      wrapInline('~~', '~~', 'strikethrough'); break
+      case 'code':        wrapInline('`', '`', 'code'); break
+      case 'codeblock': {
+        const ins = '\n```\n' + (sel || 'code here') + '\n```\n'
+        result = val.slice(0, start) + ins + val.slice(end)
+        cs = start + 5; ce = cs + (sel || 'code here').length
+        break
+      }
+      case 'h1':    prefixLine('# '); break
+      case 'h2':    prefixLine('## '); break
+      case 'h3':    prefixLine('### '); break
+      case 'hr': {
+        result = val.slice(0, start) + '\n---\n' + val.slice(end)
+        cs = ce = start + 5; break
+      }
+      case 'bullet':  prefixLine('- '); break
+      case 'ordered': prefixLine('1. '); break
+      case 'quote':   prefixLine('> '); break
+      case 'link': {
+        const url = prompt('Enter URL:')
+        if (!url) return
+        const t = sel || 'link text'
+        result = val.slice(0, start) + `[${t}](${url})` + val.slice(end)
+        cs = start; ce = start + `[${t}](${url})`.length
+        break
+      }
+      default: return
+    }
 
     setDraft(result)
     requestAnimationFrame(() => {
       if (!textareaRef.current) return
       textareaRef.current.selectionStart = cs
-      textareaRef.current.selectionEnd = ce
+      textareaRef.current.selectionEnd   = ce
       textareaRef.current.focus()
     })
   }, [])
@@ -446,23 +451,18 @@ export default function UserGuidePage() {
       let url
       if (LIVE) {
         const fileData = await new Promise((res, rej) => {
-          const r = new FileReader()
-          r.onload  = () => res(r.result.split(',')[1])
-          r.onerror = rej
-          r.readAsDataURL(file)
+          const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file)
         })
         const result = await uploadWikiImage({ fileName: file.name, fileData, mimeType: file.type })
         url = result.url
       } else {
         url = URL.createObjectURL(file)
       }
-
       const ta = textareaRef.current
       if (ta) {
         const pos = ta.selectionStart
-        const v   = ta.value
         const ins = `\n![${file.name}](${url})\n`
-        setDraft(v.slice(0, pos) + ins + v.slice(pos))
+        setDraft(v => v.slice(0, pos) + ins + v.slice(pos))
         requestAnimationFrame(() => {
           if (textareaRef.current) {
             textareaRef.current.selectionStart = textareaRef.current.selectionEnd = pos + ins.length
@@ -470,24 +470,19 @@ export default function UserGuidePage() {
           }
         })
       }
-    } catch (err) {
-      alert('Image upload failed: ' + err.message)
-    } finally {
-      setImgUploading(false)
-    }
+    } catch (err) { alert('Image upload failed: ' + err.message) }
+    finally { setImgUploading(false) }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   if (loadingPages) {
     return (
-      <div className="flex items-center justify-center py-32 text-slate-400 dark:text-slate-500 gap-3">
+      <div className="flex items-center justify-center py-32 text-slate-400 gap-3">
         <span className="w-5 h-5 border-2 border-slate-300 border-t-brand rounded-full animate-spin" />
         Loading wiki…
       </div>
     )
   }
-
-  const canEdit = isAdmin
 
   return (
     <div className="flex gap-5 min-h-[calc(100vh-112px)]">
@@ -500,39 +495,32 @@ export default function UserGuidePage() {
             <span className="text-xs font-semibold uppercase tracking-wide">Pages</span>
           </div>
           {isAdmin && !editing && (
-            <button
-              onClick={createPage}
-              title="New page"
+            <button onClick={createPage} title="New page"
               className="p-1 rounded-lg text-slate-400 hover:text-[#111111] dark:hover:text-[#FECD28] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
               <Plus size={15} />
             </button>
           )}
         </div>
-
         <nav className="flex flex-col gap-0.5">
           {pages.map(page => (
-            <button
-              key={page.id}
-              onClick={() => selectPage(page)}
+            <button key={page.id} onClick={() => selectPage(page)}
               className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors flex items-center gap-2 group
                 ${activePage?.id === page.id
                   ? 'bg-[#FECD28]/20 dark:bg-[#FECD28]/10 text-slate-900 dark:text-slate-100 font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}>
-              <ChevronRight size={12} className={`shrink-0 transition-transform ${activePage?.id === page.id ? 'text-[#FECD28] translate-x-0' : 'text-transparent group-hover:text-slate-300'}`} />
+              <ChevronRight size={12} className={`shrink-0 transition-transform ${activePage?.id === page.id ? 'text-[#FECD28]' : 'text-transparent group-hover:text-slate-300'}`} />
               <span className="truncate flex-1">{page.title}</span>
               {page.locked && <Lock size={10} className="shrink-0 text-slate-400 dark:text-slate-500" />}
             </button>
           ))}
-          {pages.length === 0 && (
-            <p className="px-3 py-4 text-xs text-slate-400 dark:text-slate-600 italic">No pages yet</p>
-          )}
+          {pages.length === 0 && <p className="px-3 py-4 text-xs text-slate-400 italic">No pages yet</p>}
         </nav>
       </aside>
 
-      {/* ── Main content ────────────────────────────────────────────────────── */}
+      {/* ── Main ────────────────────────────────────────────────────────────── */}
       <main className="flex-1 min-w-0">
         {!activePage ? (
-          <div className="flex flex-col items-center justify-center py-24 text-slate-400 dark:text-slate-600 gap-3">
+          <div className="flex flex-col items-center justify-center py-24 text-slate-400 gap-3">
             <BookOpen size={32} />
             <p className="text-sm">No page selected</p>
             {isAdmin && <button onClick={createPage} className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold text-[#111111] bg-[#FECD28] hover:brightness-95">Create first page</button>}
@@ -541,68 +529,52 @@ export default function UserGuidePage() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
 
             {/* Page header */}
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-slate-700 print:hidden">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 print:hidden">
               {editing ? (
-                <input
-                  value={draftTitle}
-                  onChange={e => setDraftTitle(e.target.value)}
+                <input value={draftTitle} onChange={e => setDraftTitle(e.target.value)}
                   placeholder="Page title"
-                  className="flex-1 text-lg font-bold bg-transparent border-b-2 border-[#FECD28] outline-none text-slate-900 dark:text-slate-100 py-0.5"
-                />
+                  className="flex-1 text-lg font-bold bg-transparent border-b-2 border-[#FECD28] outline-none text-slate-900 dark:text-slate-100 py-0.5" />
               ) : (
                 <h1 className="flex-1 text-lg font-bold text-slate-900 dark:text-slate-100 truncate">{activePage.title}</h1>
               )}
 
-              {/* Meta */}
               {!editing && activePage.updatedAt && (
-                <span className="hidden sm:block text-xs text-slate-400 dark:text-slate-500 shrink-0">
+                <span className="hidden sm:block text-xs text-slate-400 shrink-0">
                   {new Date(activePage.updatedAt).toLocaleDateString('en-ZA')}
                   {activePage.updatedBy ? ` · ${activePage.updatedBy}` : ''}
                 </span>
               )}
+              {savedFlash && <span className="text-xs font-medium text-green-600 shrink-0">Saved ✓</span>}
 
-              {/* Saved flash */}
-              {savedFlash && <span className="text-xs font-medium text-green-600 dark:text-green-400 shrink-0">Saved ✓</span>}
-
-              {/* Admin actions */}
-              {canEdit && !editing && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Lock/unlock */}
-                  <button
-                    onClick={toggleLock}
-                    title={activePage.locked ? 'Unlock page' : 'Lock page (prevents deletion)'}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+              {/* Admin controls — view mode */}
+              {isAdmin && !editing && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={toggleLock} title={activePage.locked ? 'Unlock page' : 'Lock page'}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                     {activePage.locked ? <Lock size={14} /> : <Unlock size={14} />}
                   </button>
-
-                  {/* Delete */}
                   {!activePage.locked && (
                     deleteConfirm ? (
                       <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-2 py-1">
                         <span className="text-xs text-red-700 dark:text-red-400 font-medium">Delete?</span>
-                        <button onClick={confirmDelete} disabled={deleting}
-                          className="text-xs text-red-600 dark:text-red-400 font-semibold hover:text-red-800 px-1 disabled:opacity-50">
-                          {deleting ? '…' : 'Yes'}
-                        </button>
-                        <button onClick={() => setDeleteConfirm(false)} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-1">No</button>
+                        <button onClick={confirmDelete} disabled={deleting} className="text-xs text-red-600 font-semibold hover:text-red-800 px-1 disabled:opacity-50">{deleting ? '…' : 'Yes'}</button>
+                        <button onClick={() => setDeleteConfirm(false)} className="text-xs text-slate-500 hover:text-slate-700 px-1">No</button>
                       </div>
                     ) : (
-                      <button onClick={() => setDeleteConfirm(true)}
-                        title="Delete page"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                      <button onClick={() => setDeleteConfirm(true)} title="Delete page"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                         <Trash2 size={14} />
                       </button>
                     )
                   )}
-
-                  {/* Edit */}
                   <button onClick={startEdit}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-[#111111] bg-[#FECD28] hover:brightness-95 transition-all">
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-[#111111] bg-[#FECD28] hover:brightness-95 transition-all ml-1">
                     <Pencil size={13} /> Edit
                   </button>
                 </div>
               )}
 
+              {/* Edit mode buttons */}
               {editing && (
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={cancelEdit} disabled={saving}
@@ -618,57 +590,65 @@ export default function UserGuidePage() {
               )}
             </div>
 
-            {/* Editor toolbar */}
+            {/* ── Obsidian-style toolbar ────────────────────────────────────── */}
             {editing && (
-              <div className="flex items-center gap-0.5 px-4 py-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 flex-wrap print:hidden">
-                <ToolBtn icon={Bold}         label="Bold (Ctrl+B)"       onClick={() => applyFormat('bold')} />
-                <ToolBtn icon={Italic}       label="Italic (Ctrl+I)"     onClick={() => applyFormat('italic')} />
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
-                <ToolBtn icon={Heading1}     label="Heading 1"           onClick={() => applyFormat('h1')} />
-                <ToolBtn icon={Heading2}     label="Heading 2"           onClick={() => applyFormat('h2')} />
-                <ToolBtn icon={Heading3}     label="Heading 3"           onClick={() => applyFormat('h3')} />
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
-                <ToolBtn icon={List}         label="Bullet list"         onClick={() => applyFormat('bullet')} />
-                <ToolBtn icon={ListOrdered}  label="Numbered list"       onClick={() => applyFormat('ordered')} />
-                <ToolBtn icon={Minus}        label="Horizontal rule"     onClick={() => applyFormat('hr')} />
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
-                <ToolBtn icon={Link2}        label="Insert link"         onClick={() => applyFormat('link')} />
+              <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/60 overflow-x-auto print:hidden">
+                {/* Text style */}
+                <ToolBtn icon={Bold}          label="Bold (**text**)"          onClick={() => applyFormat('bold')} />
+                <ToolBtn icon={Italic}        label="Italic (_text_)"          onClick={() => applyFormat('italic')} />
+                <ToolBtn icon={Strikethrough} label="Strikethrough (~~text~~)" onClick={() => applyFormat('strike')} />
+                <Sep />
+                {/* Headings */}
+                <ToolBtn icon={Heading1} label="Heading 1" onClick={() => applyFormat('h1')} />
+                <ToolBtn icon={Heading2} label="Heading 2" onClick={() => applyFormat('h2')} />
+                <ToolBtn icon={Heading3} label="Heading 3" onClick={() => applyFormat('h3')} />
+                <Sep />
+                {/* Lists & structure */}
+                <ToolBtn icon={List}        label="Bullet list"    onClick={() => applyFormat('bullet')} />
+                <ToolBtn icon={ListOrdered} label="Numbered list"  onClick={() => applyFormat('ordered')} />
+                <ToolBtn icon={Quote}       label="Blockquote"     onClick={() => applyFormat('quote')} />
+                <ToolBtn icon={Minus}       label="Horizontal rule (---)" onClick={() => applyFormat('hr')} />
+                <Sep />
+                {/* Code */}
+                <ToolBtn icon={Code}      label="Inline code (`code`)"  onClick={() => applyFormat('code')} />
+                <ToolBtn icon={FileCode2} label="Code block (```)"       onClick={() => applyFormat('codeblock')} />
+                <Sep />
+                {/* Insert */}
+                <ToolBtn icon={Link2}     label="Insert link"   onClick={() => applyFormat('link')} />
                 <ToolBtn
                   icon={imgUploading ? Loader2 : ImageIcon}
                   label="Insert image"
                   disabled={imgUploading}
+                  spin={imgUploading}
                   onClick={() => imageInputRef.current?.click()} />
                 <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
-                <div className="ml-auto text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
-                  Markdown · **bold** · _italic_ · # Heading · ![alt](url)
-                </div>
               </div>
             )}
 
-            {/* Content */}
+            {/* Content area */}
             <div className={editing ? '' : 'p-6 sm:p-8'}>
               {editing ? (
                 <textarea
                   ref={textareaRef}
                   value={draft}
                   onChange={e => setDraft(e.target.value)}
-                  rows={32}
+                  rows={34}
                   spellCheck
-                  className="w-full font-mono text-sm rounded-none border-0 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-6 focus:outline-none leading-relaxed resize-none"
+                  className="w-full font-mono text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-5 focus:outline-none leading-relaxed resize-none border-0"
                   placeholder="Start writing in Markdown…"
                 />
               ) : loadingContent ? (
-                <div className="flex items-center gap-3 py-20 justify-center text-slate-400 dark:text-slate-500">
+                <div className="flex items-center gap-3 py-20 justify-center text-slate-400">
                   <span className="w-5 h-5 border-2 border-slate-300 border-t-brand rounded-full animate-spin" />
                   Loading…
                 </div>
               ) : content.trim() ? (
                 <article>{renderMarkdown(content)}</article>
               ) : (
-                <div className="flex flex-col items-center gap-3 py-20 text-slate-400 dark:text-slate-500">
+                <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
                   <AlertCircle size={24} />
                   <p className="text-sm">This page is empty.</p>
-                  {canEdit && <button onClick={startEdit} className="text-sm text-[#FECD28] font-semibold hover:underline">Start editing</button>}
+                  {isAdmin && <button onClick={startEdit} className="text-sm text-[#FECD28] font-semibold hover:underline">Start editing</button>}
                 </div>
               )}
             </div>
@@ -676,7 +656,6 @@ export default function UserGuidePage() {
           </div>
         )}
       </main>
-
     </div>
   )
 }

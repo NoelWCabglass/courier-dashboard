@@ -881,40 +881,53 @@ export default function UserGuidePage() {
                 <div className="flex items-center gap-1 shrink-0">
                   {/* Print */}
                   <button onClick={() => {
+                    const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    const inline = (s) => esc(s)
+                      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                      .replace(/_(.+?)_/g,'<em>$1</em>')
+                      .replace(/`(.+?)`/g,'<code>$1</code>')
+                      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%">')
+                      .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>')
+                    const lines = content.split('\n')
+                    let html = ''; let i = 0
+                    while (i < lines.length) {
+                      const l = lines[i]
+                      if (/^### /.test(l)) { html += `<h3>${inline(l.slice(4))}</h3>`; i++ }
+                      else if (/^## /.test(l)) { html += `<h2>${inline(l.slice(3))}</h2>`; i++ }
+                      else if (/^# /.test(l)) { html += `<h1>${inline(l.slice(2))}</h1>`; i++ }
+                      else if (/^---$/.test(l)) { html += '<hr>'; i++ }
+                      else if (/^> /.test(l)) { html += `<blockquote>${inline(l.slice(2))}</blockquote>`; i++ }
+                      else if (/^```/.test(l)) {
+                        let code = ''; i++
+                        while (i < lines.length && !/^```/.test(lines[i])) { code += esc(lines[i]) + '\n'; i++ }
+                        html += `<pre><code>${code}</code></pre>`; i++
+                      } else if (/^[-*] /.test(l)) {
+                        html += '<ul>'; while (i < lines.length && /^[-*] /.test(lines[i])) { html += `<li>${inline(lines[i].slice(2))}</li>`; i++ } html += '</ul>'
+                      } else if (/^\d+\. /.test(l)) {
+                        html += '<ol>'; while (i < lines.length && /^\d+\. /.test(lines[i])) { html += `<li>${inline(lines[i].replace(/^\d+\. /,''))}</li>`; i++ } html += '</ol>'
+                      } else if (l.trim() === '') { i++ }
+                      else {
+                        let para = [l]; i++
+                        while (i < lines.length && lines[i].trim() !== '' && !/^[#>\-*`]/.test(lines[i]) && !/^\d+\./.test(lines[i])) { para.push(lines[i]); i++ }
+                        html += `<p>${para.map(inline).join('<br>')}</p>`
+                      }
+                    }
                     const w = window.open('', '_blank')
-                    w.document.write(`<!DOCTYPE html><html><head><title>${activePage.title}</title><style>
-                      body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;color:#111;line-height:1.6}
-                      h1{font-size:2em;font-weight:800;margin-bottom:4px}h2{font-size:1.3em;font-weight:700;margin-top:2em;padding-bottom:4px;border-bottom:1px solid #ddd}
-                      h3{font-size:1.1em;font-weight:600;margin-top:1.4em}p{margin:.5em 0}
+                    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(activePage.title)}</title><style>
+                      body{font-family:system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;color:#111;line-height:1.7}
+                      h1{font-size:2em;font-weight:800;margin:1em 0 .25em}h2{font-size:1.3em;font-weight:700;margin-top:2em;padding-bottom:4px;border-bottom:1px solid #ddd}
+                      h3{font-size:1.1em;font-weight:600;margin-top:1.4em}p{margin:.6em 0}
                       ul,ol{margin:.5em 0;padding-left:1.6em}li{margin:.25em 0}
                       pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto;font-size:.85em}
                       code{background:#f4f4f4;padding:1px 4px;border-radius:3px;font-size:.9em}
                       blockquote{border-left:3px solid #FECD28;margin:0;padding-left:16px;color:#555;font-style:italic}
                       hr{border:none;border-top:1px solid #ddd;margin:1.5em 0}
-                      img{max-width:100%}strong{font-weight:700}em{font-style:italic}
+                      img{max-width:100%}strong{font-weight:700}em{font-style:italic}a{color:#0066cc}
                       @media print{body{margin:20px}}
-                    </style></head><body>
-                    <h1>${activePage.title}</h1>
-                    <div id="content"></div>
-                    <script>
-                      const md = ${JSON.stringify(content)};
-                      document.getElementById('content').innerHTML = md
-                        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                        .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-                        .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-                        .replace(/^# (.+)$/gm,'<h1>$1</h1>')
-                        .replace(/^---$/gm,'<hr>')
-                        .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
-                        .replace(/^\d+\. (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>')
-                        .replace(/^[-*] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
-                        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-                        .replace(/_(.+?)_/g,'<em>$1</em>')
-                        .replace(/!\[([^\]]*)\]\(([^)]*)\)/g,'<img src="$2" alt="$1">')
-                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>')
-                        .replace(/\n\n/g,'</p><p>').replace(/^(?!<)/gm,'').replace(/^/,'<p>').replace(/$/,'</p>');
-                      window.print();
-                    </script></body></html>`)
+                    </style></head><body><h1>${esc(activePage.title)}</h1>${html}</body></html>`)
                     w.document.close()
+                    w.focus()
+                    w.print()
                   }} title="Print page"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                     <Printer size={14} />

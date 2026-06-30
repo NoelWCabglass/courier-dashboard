@@ -291,14 +291,43 @@ function PermissionsModal({ page, allPages, allRoles, allUsers, onSave, onClose 
   )
 }
 
+// ─── Move to folder modal ─────────────────────────────────────────────────────
+function MoveToFolderModal({ page, folders, onMove, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xs" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+          <Folder size={15} className="text-[#FECD28]" />
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex-1">Move "{page.title}" to…</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={15} /></button>
+        </div>
+        <div className="py-2 max-h-64 overflow-y-auto">
+          <button onClick={() => onMove(null)}
+            className="w-full text-left px-5 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+            <FileText size={13} className="text-slate-400" /> No folder (root)
+          </button>
+          {folders.map(f => (
+            <button key={f.id} onClick={() => onMove(f.id)}
+              className="w-full text-left px-5 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-[#FECD28]/10 flex items-center gap-2">
+              <Folder size={13} className="text-[#FECD28]" /> {f.title}
+            </button>
+          ))}
+          {!folders.length && <p className="px-5 py-3 text-xs text-slate-400">No folders yet — create one first.</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Sidebar tree item ────────────────────────────────────────────────────────
-function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, isAdmin, canView }) {
+function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, toggleExpanded, onSelect, onCreateSubpage, onCreatePageInFolder, onMoveToFolder, onDeleteFolder, isAdmin, canView }) {
   if (!canView(page)) return null
   const children = allPages.filter(p => p.parentId === page.id && canView(p))
   const hasChildren = children.length > 0
   const isActive = page.id === activeId
   const isExpanded = expandedIds.has(page.id)
   const isFolder = page.isFolder
+  const [confirmDel, setConfirmDel] = useState(false)
 
   return (
     <div>
@@ -329,19 +358,40 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
           {page.viewRoles?.length > 0 && !page.viewRoles.includes('general') && (
             <EyeOff size={9} className="text-amber-400" title="Restricted visibility" />
           )}
-          {isAdmin && isFolder && (
-            <button onClick={e => { e.stopPropagation(); onCreatePageInFolder(page.id) }}
-              title="New page in folder"
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-              <Plus size={11} />
-            </button>
+          {isAdmin && isFolder && !confirmDel && (
+            <>
+              <button onClick={e => { e.stopPropagation(); onCreatePageInFolder(page.id) }}
+                title="New page in folder"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                <Plus size={11} />
+              </button>
+              <button onClick={e => { e.stopPropagation(); setConfirmDel(true) }}
+                title="Delete folder"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                <Trash2 size={11} />
+              </button>
+            </>
+          )}
+          {isAdmin && isFolder && confirmDel && (
+            <span className="flex items-center gap-1">
+              <span className="text-xs text-red-600 font-medium">Delete?</span>
+              <button onClick={e => { e.stopPropagation(); onDeleteFolder(page.id); setConfirmDel(false) }} className="text-xs text-red-600 font-bold px-1 hover:text-red-800">Yes</button>
+              <button onClick={e => { e.stopPropagation(); setConfirmDel(false) }} className="text-xs text-slate-500 px-1 hover:text-slate-700">No</button>
+            </span>
           )}
           {isAdmin && !isFolder && (
-            <button onClick={e => { e.stopPropagation(); onCreateSubpage(page.id) }}
-              title="New subpage"
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-              <Plus size={11} />
-            </button>
+            <>
+              <button onClick={e => { e.stopPropagation(); onMoveToFolder(page) }}
+                title="Move to folder"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                <Folder size={11} />
+              </button>
+              <button onClick={e => { e.stopPropagation(); onCreateSubpage(page.id) }}
+                title="New subpage"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                <Plus size={11} />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -356,6 +406,7 @@ function PageItem({ page, depth, allPages, activeId, searchQuery, expandedIds, t
             onSelect={onSelect} onCreateSubpage={onCreateSubpage}
             onCreatePageInFolder={onCreatePageInFolder}
             onMoveToFolder={onMoveToFolder}
+            onDeleteFolder={onDeleteFolder}
             isAdmin={isAdmin} canView={canView} />
         ))
       }
@@ -405,7 +456,8 @@ export default function UserGuidePage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting]     = useState(false)
 
-  const [permsPage, setPermsPage]   = useState(null) // page whose permissions modal is open
+  const [permsPage, setPermsPage]   = useState(null)
+  const [movingPage, setMovingPage] = useState(null) // page being moved to a folder
 
   const [imgUploading, setImgUploading] = useState(false)
   const [dragOver, setDragOver]         = useState(false)
@@ -534,6 +586,27 @@ export default function UserGuidePage() {
       setDeleteConfirm(false)
     } catch (err) { alert('Delete failed: ' + err.message) }
     finally { setDeleting(false) }
+  }
+
+  // ── Delete folder ───────────────────────────────────────────────────────────
+  const deleteFolder = async (folderId) => {
+    try {
+      if (LIVE) await deleteWikiPage({ id: folderId })
+      // Move children to root before removing folder
+      const children = pages.filter(p => p.parentId === folderId)
+      if (LIVE) await Promise.all(children.map(c => saveWikiPage({ id: c.id, parentId: null })))
+      setPages(ps => ps.filter(p => p.id !== folderId).map(p => p.parentId === folderId ? { ...p, parentId: null } : p))
+    } catch (err) { alert('Delete failed: ' + err.message) }
+  }
+
+  // ── Move page to folder ─────────────────────────────────────────────────────
+  const movePage = async (page, folderId) => {
+    setMovingPage(null)
+    try {
+      if (LIVE) await saveWikiPage({ id: page.id, parentId: folderId || null })
+      setPages(ps => ps.map(p => p.id === page.id ? { ...p, parentId: folderId || null } : p))
+      if (folderId) setExpandedIds(s => new Set([...s, folderId]))
+    } catch (err) { alert('Move failed: ' + err.message) }
   }
 
   // ── Permissions save ────────────────────────────────────────────────────────
@@ -739,7 +812,8 @@ export default function UserGuidePage() {
                     expandedIds={expandedIds} toggleExpanded={toggleExpanded}
                     onSelect={selectPage} onCreateSubpage={createPage}
                     onCreatePageInFolder={createPageInFolder}
-                    onMoveToFolder={() => {}}
+                    onMoveToFolder={setMovingPage}
+                    onDeleteFolder={deleteFolder}
                     isAdmin={isAdmin} canView={canView} />
                 ))
           )}
@@ -959,6 +1033,15 @@ export default function UserGuidePage() {
           allUsers={(users || []).filter(u => u.role !== 'admin')}
           onSave={savePermissions}
           onClose={() => setPermsPage(null)}
+        />
+      )}
+
+      {movingPage && (
+        <MoveToFolderModal
+          page={movingPage}
+          folders={pages.filter(p => p.isFolder)}
+          onMove={(folderId) => movePage(movingPage, folderId)}
+          onClose={() => setMovingPage(null)}
         />
       )}
     </div>

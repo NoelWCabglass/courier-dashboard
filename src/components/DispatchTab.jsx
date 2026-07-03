@@ -246,9 +246,12 @@ export default function DispatchTab({ orders, history, packedIds, onTogglePacked
   const [search, setSearch] = useState('')
   const [detailId, setDetailId] = useState(null)
 
-  // Booked orders still in Pending are awaiting dispatch (dispatched ones already left)
+  // Booked orders awaiting dispatch — must have a waybill (or be Triangle)
   const booked = useMemo(
-    () => (orders ?? []).filter(o => o.status === STATUS.BOOKED),
+    () => (orders ?? []).filter(o =>
+      o.status === STATUS.BOOKED &&
+      (o.waybillNo || (o.selectedCourier || '').toLowerCase() === 'triangle')
+    ),
     [orders]
   )
 

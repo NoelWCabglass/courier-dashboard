@@ -19,6 +19,9 @@ const COURIER_COLORS = {
 function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, dispatchedMode, onUndoDispatch }) {
   const totalParcels = order.items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0)
   const totalWeight = order.items.reduce((sum, it) => sum + (Number(it.kg) || 0) * (Number(it.qty) || 0), 0)
+  const isTriangle = (order.selectedCourier || '').toLowerCase() === 'triangle'
+  const hasWaybill = !!order.waybillNo
+  const canDispatch = isPacked && (hasWaybill || isTriangle)
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -156,14 +159,15 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, d
               <Box size={20} /> {isPacked ? 'Labeled ✓ (tap to undo)' : 'Mark Labeled'}
             </button>
             <button onClick={() => { if (confirm(`Dispatch ${order.psNo}? It will move to History.`)) onDispatch(order.id) }}
-              disabled={!isPacked}
+              disabled={!canDispatch}
               className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-lg font-bold transition-all
-                ${isPacked ? 'text-[#111111] hover:brightness-95 shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}
-              style={isPacked ? { backgroundColor: '#FECD28' } : {}}>
+                ${canDispatch ? 'text-[#111111] hover:brightness-95 shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}
+              style={canDispatch ? { backgroundColor: '#FECD28' } : {}}>
               <Truck size={20} /> Dispatch
             </button>
           </div>
           {!isPacked && <p className="text-center text-sm text-slate-400 mt-2">Mark as labeled before dispatching</p>}
+          {isPacked && !hasWaybill && !isTriangle && <p className="text-center text-sm text-red-400 mt-2">No waybill — cannot dispatch until TCG booking is complete</p>}
         </>
       )}
     </div>
@@ -175,6 +179,9 @@ function DispatchDetail({ order, isPacked, onBack, onTogglePacked, onDispatch, d
 // ============================================================
 function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
   const totalParcels = order.items.reduce((s, it) => s + (Number(it.qty) || 0), 0)
+  const isTriangle = (order.selectedCourier || '').toLowerCase() === 'triangle'
+  const hasWaybill = !!order.waybillNo
+  const canDispatch = isPacked && (hasWaybill || isTriangle)
   return (
     <div className={`rounded-2xl border shadow-sm p-5 transition-all
       ${isPacked ? 'border-green-300 dark:border-green-700 bg-green-50/40 dark:bg-green-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
@@ -220,10 +227,11 @@ function DispatchCard({ order, isPacked, onOpen, onTogglePacked, onDispatch }) {
           <Box size={15} /> {isPacked ? 'Labeled ✓' : 'Label'}
         </button>
         <button onClick={() => { if (confirm(`Dispatch ${order.psNo}? It will move to History.`)) onDispatch(order.id) }}
-          disabled={!isPacked}
+          disabled={!canDispatch}
+          title={!hasWaybill && !isTriangle ? 'No waybill yet' : ''}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all
-            ${isPacked ? 'text-[#111111] hover:brightness-95' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}
-          style={isPacked ? { backgroundColor: '#FECD28' } : {}}>
+            ${canDispatch ? 'text-[#111111] hover:brightness-95' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}
+          style={canDispatch ? { backgroundColor: '#FECD28' } : {}}>
           <Truck size={15} /> Dispatch
         </button>
       </div>

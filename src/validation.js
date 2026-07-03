@@ -36,6 +36,14 @@ export function getOrderIssues(order) {
     issues.push('No phone or email for the customer')
   }
 
+  // --- KZN warning (TCG frequently has issues delivering to KwaZulu-Natal) ---
+  if (!booked) {
+    const province = (order.address?.province || '').toLowerCase().trim()
+    if (province === 'kzn' || province === 'kwazulu-natal' || province === 'kwazulu natal') {
+      issues.push('Destination is KZN — TCG often has delivery issues here. Consider using EPX or Triangle, and double-check the address.')
+    }
+  }
+
   // --- Courier / quotes (only relevant once it's being quoted, not booked) ---
   if (!booked && !alreadyFlagged) {
     if (order.tcgQuote == null && order.epxQuote == null && order.status === STATUS.QUOTED) {

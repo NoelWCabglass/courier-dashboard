@@ -316,13 +316,14 @@ function Dashboard() {
 
   const handleArchive = async () => {
     if (!LIVE) { alert('Archiving works on the live site only.'); return }
-    const archivable = [STATUS.BOOKED, STATUS.TRIANGLE]
-    const bookedCount = orders.filter(o => archivable.includes(o.status)).length
-    if (bookedCount === 0) { alert('No completed orders to move to history.'); return }
-    if (!confirm(`Move ${bookedCount} completed order${bookedCount !== 1 ? 's' : ''} (booked + Triangle) to History?`)) return
+    const archivable = [STATUS.BOOKED, STATUS.TRIANGLE, STATUS.INVOICED]
+    const targets = orders.filter(o => archivable.includes(o.status))
+    if (targets.length === 0) { alert('No completed orders to move to history.'); return }
+    if (!confirm(`Move ${targets.length} completed order${targets.length !== 1 ? 's' : ''} (booked + Triangle) to History?`)) return
     setArchiving(true)
     try {
-      const res = await archiveBooked()
+      const psNos = targets.map(o => o.psNo)
+      const res = await apiArchiveOrders(psNos)
       addLog(user, 'Archived booked orders to history', `${res.moved} moved`)
       await loadOrders()
       alert(`Moved ${res.moved} order${res.moved !== 1 ? 's' : ''} to History.`)

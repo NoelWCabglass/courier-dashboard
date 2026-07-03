@@ -17,10 +17,16 @@ async function post(action, payload = {}) {
 // Read orders + history. GET is a "simple" request so no preflight.
 export async function fetchOrders() {
   const url = `${API_URL}?action=getOrders&secret=${encodeURIComponent(API_SECRET)}`
-  const res = await fetch(url)
-  const data = await res.json()
-  if (!data.ok) throw new Error(data.error || 'Failed to load orders')
-  return { orders: data.orders || [], history: data.history || [] }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20000)
+  try {
+    const res = await fetch(url, { signal: controller.signal })
+    const data = await res.json()
+    if (!data.ok) throw new Error(data.error || 'Failed to load orders')
+    return { orders: data.orders || [], history: data.history || [] }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function fetchUsers() {

@@ -28,12 +28,13 @@ function Dashboard() {
   const { addLog } = useActivity()
   const [dark, toggleDark] = useDarkMode()
   const [archiving, setArchiving] = useState(false)
-  const [orders, setOrders] = useState(LIVE ? [] : mockOrders)
-  const [history, setHistory] = useState(LIVE ? [] : mockHistory)
+  const cachedData = LIVE ? (() => { try { const c = localStorage.getItem('cabglass_orders_cache'); return c ? JSON.parse(c) : null } catch (_) { return null } })() : null
+  const [orders, setOrders] = useState(LIVE ? (cachedData?.orders || []) : mockOrders)
+  const [history, setHistory] = useState(LIVE ? (cachedData?.history || []) : mockHistory)
   const [packedIds, setPackedIds] = useState(() => new Set())
   const [stagedIds, setStagedIds] = useState(() => new Set())
   const [backOrderIds, setBackOrderIds] = useState(() => new Set())
-  const [loading, setLoading] = useState(LIVE)
+  const [loading, setLoading] = useState(LIVE && !cachedData)
   const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState(landingTab(user))
   const [activeFilter, setActiveFilter] = useState('all')
@@ -93,6 +94,8 @@ function Dashboard() {
     try {
       const { orders, history } = await fetchOrders()
       applyLoaded(orders, history, opts)
+      // Cache for instant load next time
+      try { localStorage.setItem('cabglass_orders_cache', JSON.stringify({ orders, history, ts: Date.now() })) } catch (_) {}
     } catch (err) {
       console.error('Failed to load orders:', err)
     } finally {

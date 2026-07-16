@@ -460,6 +460,21 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                 </section>
               )}
 
+              {/* Reset Booking Failed — lets admin retry a failed booking */}
+              {canEdit && !inHistory && order.status === STATUS.BOOKING_FAILED && (
+                <section>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Reset "${order.psNo}" so it can be rebooked?\n\nThis will set status back to Quoted and clear Buy Label. You'll need to re-tick Buy Label to trigger a new booking attempt.`)) {
+                        onUpdate({ status: 'Quoted', buyLabel: false })
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                    <RefreshCw size={15} /> Reset &amp; Retry Booking
+                  </button>
+                </section>
+              )}
+
               {/* Restore to Orders — for orders sitting in History */}
               {canEdit && onRestore && !editing && inHistory && (
                 <section>

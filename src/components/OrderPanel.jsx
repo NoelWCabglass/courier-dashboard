@@ -465,8 +465,8 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
                 <section>
                   <button
                     onClick={() => {
-                      if (confirm(`Reset "${order.psNo}" so it can be rebooked?\n\nThis will set status back to Quoted and clear Buy Label. You'll need to re-tick Buy Label to trigger a new booking attempt.`)) {
-                        onUpdate({ status: 'Quoted', buyLabel: false })
+                      if (confirm(`Reset "${order.psNo}" so it can be rebooked?\n\nThis will clear the error, set status back to Quoted, and untick Buy Label. Fix any address issues first, then re-tick Buy Label to trigger a new booking.`)) {
+                        onUpdate({ resetBooking: true, buyLabel: false, approved: false })
                       }
                     }}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">

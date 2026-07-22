@@ -35,7 +35,7 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
   const { user, perm } = useAuth()
   const canEdit = perm('orders', 'edit')
   const open = !!order
-  const terminal = order && [STATUS.BOOKED, STATUS.BOOKING, STATUS.BOOKING_FAILED].includes(order.status)
+  const terminal = order && [STATUS.BOOKED, STATUS.BOOKING].includes(order.status)
 
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)

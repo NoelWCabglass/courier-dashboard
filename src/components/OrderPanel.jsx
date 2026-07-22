@@ -461,7 +461,7 @@ export default function OrderPanel({ order, onClose, onUpdate, onDelete, onSaveN
               )}
 
               {/* Reset Booking Failed — lets admin retry a failed booking */}
-              {canEdit && !inHistory && order.status === STATUS.BOOKING_FAILED && (
+              {!inHistory && order.status === STATUS.BOOKING_FAILED && (
                 <section>
                   <button
                     onClick={() => {
